@@ -60,9 +60,11 @@ function LandingPage({ onLogout, userEmail }) {
     }
   };
 
-  const handleGardenCreated = (newGarden) => {
-    setGardens(prev => [newGarden, ...prev]);
+  const handleGardenCreated = async () => {
+    // Refresh the gardens list from the API instead of adding to array
+    // This prevents duplicates and ensures we have the latest data
     setShowWizard(false);
+    await fetchGardens();
   };
 
   const handleGardenClick = (gardenId) => {

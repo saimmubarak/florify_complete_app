@@ -17,6 +17,7 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
   const [error, setError] = useState('');
   const [createdGardenId, setCreatedGardenId] = useState(null);
   const [hasCalledCallback, setHasCalledCallback] = useState(false);
+  const [blueprintEditorOpened, setBlueprintEditorOpened] = useState(false);
   const messageHandlerRef = React.useRef(null);
 
   const handleInputChange = (field, value) => {
@@ -61,6 +62,13 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Only process submit on step 3 (the actual submit step)
+    if (currentStep !== 3) {
+      // For other steps, just move to next step
+      handleNext();
+      return;
+    }
+    
     if (!formData.name.trim() || !formData.location.trim()) {
       setError('Garden name and location are required');
       return;
@@ -68,7 +76,7 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
 
     try {
       setLoading(true);
-      setError(null);
+      setError('');
       
       const response = await createGarden(formData);
       const newGarden = response.garden;
@@ -94,7 +102,7 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
     // Clear any previous errors
     setError('');
 
-    // Get user ID from token
+    // Get user ID and token
     const token = localStorage.getItem('token');
     let userId = '';
     if (token) {
@@ -107,8 +115,8 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
       }
     }
 
-    // Open replit floorplan in new tab with create mode
-    const blueprintUrl = `http://localhost:5174/?mode=create&garden_id=${createdGardenId}&user_id=${userId}`;
+    // Open replit floorplan in new tab with create mode and pass token
+    const blueprintUrl = `http://localhost:5001/?mode=create&garden_id=${createdGardenId}&user_id=${userId}&token=${encodeURIComponent(token || '')}`;
     console.log('🌐 Opening blueprint editor:', blueprintUrl);
     const blueprintWindow = window.open(blueprintUrl, '_blank', 'width=1200,height=800');
     
@@ -117,6 +125,9 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
       return;
     }
 
+    // Mark that the editor was opened
+    setBlueprintEditorOpened(true);
+    
     // No need for postMessage listener - blueprint editor saves directly to API
     // User can close this wizard after opening the blueprint editor
   };
@@ -129,10 +140,11 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
       messageHandlerRef.current = null;
     }
     
-    // Only call callback once
+    // Only call callback once - just signal completion, don't pass data
+    // The parent will refresh the list from API to avoid duplicates
     if (!hasCalledCallback && onGardenCreated) {
       setHasCalledCallback(true);
-      onGardenCreated({ gardenId: createdGardenId, ...formData });
+      onGardenCreated();
     }
   };
 
@@ -193,13 +205,26 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
             <li>✓ Design driveways and patios</li>
             <li>✓ Export your design as PNG or PDF</li>
           </ul>
-          <Button 
-            onClick={handleCreateBlueprint} 
-            className="primary-btn blueprint-btn"
-            style={{ marginTop: '20px', width: '100%' }}
-          >
-            OPEN BLUEPRINT EDITOR 🎨
-          </Button>
+          
+          {!blueprintEditorOpened ? (
+            <Button 
+              onClick={handleCreateBlueprint} 
+              className="primary-btn blueprint-btn"
+              style={{ marginTop: '20px', width: '100%' }}
+            >
+              OPEN BLUEPRINT EDITOR 🎨
+            </Button>
+          ) : (
+            <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '8px', textAlign: 'center' }}>
+              <p style={{ color: '#2e7d32', marginBottom: '10px' }}>
+                ✓ Blueprint editor opened in a new tab
+              </p>
+              <p style={{ fontSize: '0.9em', color: '#666' }}>
+                Save your blueprint in the editor, then click "Done" below.
+              </p>
+            </div>
+          )}
+          
           <p className="blueprint-hint" style={{ marginTop: '15px', fontSize: '0.9em', color: '#666' }}>
             Your garden has been saved. You can create a blueprint now or skip and add it later.
           </p>
@@ -257,10 +282,10 @@ const SimpleCreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
               <Button 
                 type="button" 
                 onClick={handleSkipBlueprint}
-                variant="secondary"
-                className="skip-btn"
+                variant={blueprintEditorOpened ? "primary" : "secondary"}
+                className={blueprintEditorOpened ? "done-btn" : "skip-btn"}
               >
-                SKIP & FINISH
+                {blueprintEditorOpened ? 'DONE ✓' : 'SKIP & FINISH'}
               </Button>
             )}
           </div>

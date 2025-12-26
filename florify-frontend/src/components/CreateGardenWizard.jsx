@@ -276,7 +276,7 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
       return;
     }
 
-    // Get user ID from token
+    // Get user ID and token
     const token = localStorage.getItem('token');
     let userId = '';
     if (token) {
@@ -289,14 +289,14 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
       }
     }
 
-    // Open replit floorplan in new tab with create mode
-    const blueprintUrl = `http://localhost:5174/?mode=create&garden_id=${createdGardenId}&user_id=${userId}`;
+    // Open replit floorplan in new tab with create mode and pass token
+    const blueprintUrl = `http://localhost:5001/?mode=create&garden_id=${createdGardenId}&user_id=${userId}&token=${encodeURIComponent(token || '')}`;
     const blueprintWindow = window.open(blueprintUrl, '_blank', 'width=1200,height=800');
 
     // Listen for blueprint data from child window
     const handleMessage = async (event) => {
       // Verify origin for security
-      if (event.origin !== 'http://localhost:5174') return;
+      if (event.origin !== 'http://localhost:5001') return;
 
       if (event.data.type === 'BLUEPRINT_SAVED' && event.data.blueprintData) {
         try {

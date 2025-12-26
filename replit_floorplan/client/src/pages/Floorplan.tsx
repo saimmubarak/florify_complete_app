@@ -14,7 +14,7 @@ import { ExportDialog } from "@/components/ExportDialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateProject, useUpdateProject, usePrepareExport } from "@/hooks/useFloorplanProject";
-import { exportFloorplan } from "@/lib/export-canvas";
+import { exportFloorplan, generateBlueprintImages, downloadPipelineImage, generatePipelineImage } from "@/lib/export-canvas";
 import {
   type WizardStep,
   type FloorplanShape,
@@ -55,6 +55,12 @@ export default function Floorplan() {
   const userId = urlParams.get('user_id');
   const blueprintId = urlParams.get('blueprint_id');
   const autoStep = urlParams.get('auto_step'); // 'export' to auto-navigate
+  const urlToken = urlParams.get('token'); // Auth token passed from florify frontend
+  
+  // Store token in localStorage for this domain if provided via URL
+  if (urlToken) {
+    localStorage.setItem('token', urlToken);
+  }
   
   const [projectId, setProjectId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<WizardStep>(autoStep === 'export' ? 'export-save' : 'plot-size');
@@ -523,6 +529,37 @@ export default function Floorplan() {
     }
   }, [shapes, doors, driveways, pathways, toast]);
 
+  // Pipeline Export - Generate 512x512 PNG for AI plant placement
+  const handlePipelineExport = useCallback(async () => {
+    try {
+      toast({
+        title: "Processing Pipeline...",
+        description: "Generating 512x512 floorplan for AI processing",
+      });
+
+      console.log('🚀 Starting pipeline export...');
+      console.log('Shapes:', shapes.length);
+      console.log('Doors:', doors.length);
+      console.log('Driveways:', driveways.length);
+      console.log('Pathways:', pathways.length);
+      console.log('Patios:', patios.length);
+
+      await downloadPipelineImage(shapes, doors, driveways, pathways, patios);
+
+      toast({
+        title: "Pipeline Export Complete",
+        description: "512x512 PNG downloaded (3x scaled, bottom 50% cropped)",
+      });
+    } catch (error) {
+      console.error('Pipeline export error:', error);
+      toast({
+        title: "Pipeline Export Failed",
+        description: error instanceof Error ? error.message : "Failed to generate pipeline image",
+        variant: "destructive",
+      });
+    }
+  }, [shapes, doors, driveways, pathways, patios, toast]);
+
   // Save and send to Florify
   const handleSaveToFlorify = useCallback(async () => {
     try {
@@ -538,11 +575,24 @@ export default function Floorplan() {
 
       console.log('🚀 Generating blueprint images...');
 
-      // For now, use placeholder images - we'll implement proper generation next
-      const pngDataUrl = "data:image/png;base64,placeholder";
-      const pdfDataUrl = "data:application/pdf;base64,placeholder";
+      toast({
+        title: "Generating Images...",
+        description: "Creating blueprint images for upload",
+      });
 
-      console.log('✅ Ready to save blueprint');
+      // Generate actual PNG images (with and without skins)
+      const { pngWithSkins, pngWithoutSkins } = await generateBlueprintImages(
+        shapes,
+        doors,
+        driveways,
+        pathways,
+        patios,
+        150 // 150 DPI for good web quality
+      );
+
+      console.log('✅ PNG images generated');
+      console.log('With skins size:', pngWithSkins.length, 'bytes');
+      console.log('Without skins size:', pngWithoutSkins.length, 'bytes');
 
       // If in create mode, send to Florify API directly
       if (mode === 'create' && gardenId) {
@@ -558,8 +608,8 @@ export default function Floorplan() {
           body: JSON.stringify({
             gardenId,
             blueprintData,
-            pngImage: pngDataUrl,
-            pdfImage: pdfDataUrl,
+            pngWithSkins,
+            pngWithoutSkins,
             name: `Garden Blueprint`
           })
         });
@@ -598,8 +648,8 @@ export default function Floorplan() {
           },
           body: JSON.stringify({
             blueprintData,
-            pngImage: pngDataUrl,
-            pdfImage: pdfDataUrl,
+            pngWithSkins,
+            pngWithoutSkins,
           })
         });
 
@@ -856,6 +906,30 @@ export default function Floorplan() {
                     {mode === 'create' ? 'Save to Garden' : 'Update Garden Blueprint'}
                   </Button>
                 )}
+              </div>
+              
+              {/* AI Pipeline Section */}
+              <div className="mt-6 pt-4 border-t border-border">
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  🌱 AI Plant Placement Pipeline
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Generate a processed 512×512 image for the AI model to suggest plant placements.
+                </p>
+                <div className="text-xs text-muted-foreground mb-3 p-2 bg-muted/30 rounded">
+                  <p className="font-mono">• 3× uniform scaling</p>
+                  <p className="font-mono">• Bottom 50% crop</p>
+                  <p className="font-mono">• 512×512 px output</p>
+                  <p className="font-mono">• Structure only (no skins)</p>
+                </div>
+                <Button
+                  onClick={handlePipelineExport}
+                  variant="outline"
+                  className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
+                  data-testid="button-pipeline-export"
+                >
+                  🧠 Generate Pipeline Image
+                </Button>
               </div>
             </div>
           )}

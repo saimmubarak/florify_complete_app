@@ -1,0 +1,30 @@
+{
+  "num_pairs": 1134,
+  "embedding_dim": 1280,
+  "img_size": 512,
+  "pdf_dpi": 300,
+  "created_at": "2025-12-09 23:36:41",
+  "min_similarity_threshold": 0.7,
+  "sample_pairs": [
+    [
+      "/content/blueprint_embeddings_db/png_cache/empty/0000.png",
+      "/content/blueprint_embeddings_db/png_cache/filled/0000.png"
+    ],
+    [
+      "/content/blueprint_embeddings_db/png_cache/empty/0001.png",
+      "/content/blueprint_embeddings_db/png_cache/filled/0001.png"
+    ],
+    [
+      "/content/blueprint_embeddings_db/png_cache/empty/0002.png",
+      "/content/blueprint_embeddings_db/png_cache/filled/0002.png"
+    ],
+    [
+      "/content/blueprint_embeddings_db/png_cache/empty/0003.png",
+      "/content/blueprint_embeddings_db/png_cache/filled/0003.png"
+    ],
+    [
+      "/content/blueprint_embeddings_db/png_cache/empty/0004.png",
+      "/content/blueprint_embeddings_db/png_cache/filled/0004.png"
+    ]
+  ]
+}
