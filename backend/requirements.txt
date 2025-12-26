@@ -3,3 +3,9 @@ botocore
 requests
 python-jose[cryptography]
 PyJWT
+# YOLO dependencies (large packages - consider using container or SageMaker for production)
+# ultralytics
+# torch
+# torchvision
+# pillow
+# numpy

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getGarden, updateGarden, deleteGarden } from '../api/gardens';
-import { getBlueprintByGarden, getBlueprintImageUrls, downloadBlueprintImage, matchBlueprint } from '../api/blueprints';
+import { getBlueprintByGarden, getBlueprintImageUrls, downloadBlueprintImage, matchBlueprint, detectPlants } from '../api/blueprints';
 import Button from '../components/Button';
 import InputField from '../components/InputField';
 import './GardenDetailPage.css';
@@ -25,9 +25,12 @@ const GardenDetailPage = () => {
   // Plant Pipeline State
   const [pipelineState, setPipelineState] = useState({
     isRunning: false,
-    currentStep: null,
+    currentStep: null, // 'matching', 'detecting', 'completed'
     matchedImage: null,
     matchInfo: null,
+    detections: null,
+    detectionSummary: null,
+    detectionWarning: null, // Warning message if YOLO didn't work
     error: null
   });
 
@@ -186,7 +189,7 @@ const GardenDetailPage = () => {
     }));
   };
 
-  // Generate Garden Pipeline - Step 1: Match Blueprint
+  // Generate Garden Pipeline - Step 1: Match Blueprint, Step 2: Detect Plants
   const handleGenerateGarden = async () => {
     if (!blueprint || !blueprintImages.pngWithoutSkins) {
       setError('Blueprint is required to generate garden. Please create a blueprint first.');
@@ -198,45 +201,76 @@ const GardenDetailPage = () => {
       currentStep: 'matching',
       matchedImage: null,
       matchInfo: null,
+      detections: null,
+      detectionSummary: null,
       error: null
     });
 
     try {
       console.log('🌱 Starting Generate Garden Pipeline...');
+      
+      // ========== STEP 1: Match Blueprint ==========
       console.log('Step 1: Matching blueprint to find plant placement template...');
+      setPipelineState(prev => ({ ...prev, currentStep: 'matching' }));
       
       // Use the without-skins blueprint image for matching
-      // In a full implementation, we would first generate the 512x512 pipeline image
-      // For now, we'll use the existing without-skins image
       const pipelineImage = blueprintImages.pngWithoutSkins;
       
-      const result = await matchBlueprint(pipelineImage, gardenId);
+      const matchResult = await matchBlueprint(pipelineImage, gardenId);
       
-      if (result.success && result.match) {
-        console.log('✅ Match found!', result.match);
-        setPipelineState({
-          isRunning: false,
-          currentStep: 'completed',
-          matchedImage: result.match.filledImageUrl,
-          matchInfo: {
-            similarity: result.match.similarity,
-            filename: result.match.filledFilename,
-            index: result.match.index
-          },
-          error: null
-        });
-      } else {
-        throw new Error(result.message || 'No matching blueprint found');
+      if (!matchResult.success || !matchResult.match) {
+        throw new Error(matchResult.message || 'No matching blueprint found');
       }
+      
+      console.log('✅ Step 1 Complete - Match found!', matchResult.match);
+      
+      // Update state with match results
+      setPipelineState(prev => ({
+        ...prev,
+        currentStep: 'detecting',
+        matchedImage: matchResult.match.filledImageUrl,
+        matchInfo: {
+          similarity: matchResult.match.similarity,
+          filename: matchResult.match.filledFilename,
+          index: matchResult.match.index
+        }
+      }));
+      
+      // ========== STEP 2: Detect Plants with YOLO ==========
+      console.log('Step 2: Detecting plant symbols with YOLO...');
+      
+      const detectionResult = await detectPlants(
+        matchResult.match.filledImageUrl,
+        gardenId,
+        0.25, // Confidence threshold
+        0.45  // IoU threshold
+      );
+      
+      if (!detectionResult.success) {
+        throw new Error(detectionResult.message || 'Plant detection failed');
+      }
+      
+      console.log('✅ Step 2 Complete - Detections:', detectionResult);
+      console.log(`Found ${detectionResult.summary.totalDetections} plant symbols`);
+      
+      // Update state with detection results
+      setPipelineState(prev => ({
+        ...prev,
+        isRunning: false,
+        currentStep: 'completed',
+        detections: detectionResult.detections,
+        detectionSummary: detectionResult.summary,
+        detectionWarning: detectionResult.warning || (detectionResult.isMock ? 'YOLO model not available - using mock data' : null)
+      }));
+      
     } catch (err) {
       console.error('❌ Pipeline error:', err);
-      setPipelineState({
+      setPipelineState(prev => ({
+        ...prev,
         isRunning: false,
         currentStep: 'error',
-        matchedImage: null,
-        matchInfo: null,
-        error: err.message || 'Failed to match blueprint'
-      });
+        error: err.message || 'Pipeline failed'
+      }));
     }
   };
 
@@ -246,6 +280,9 @@ const GardenDetailPage = () => {
       currentStep: null,
       matchedImage: null,
       matchInfo: null,
+      detections: null,
+      detectionSummary: null,
+      detectionWarning: null,
       error: null
     });
   };
@@ -549,7 +586,9 @@ const GardenDetailPage = () => {
                       }} />
                       <p style={{ color: '#666' }}>
                         {pipelineState.currentStep === 'matching' 
-                          ? '🔍 Finding matching plant template...' 
+                          ? '🔍 Step 1: Finding matching plant template...' 
+                          : pipelineState.currentStep === 'detecting'
+                          ? '🎯 Step 2: Detecting plant symbols with YOLO...'
                           : 'Processing...'}
                       </p>
                     </div>
@@ -573,6 +612,7 @@ const GardenDetailPage = () => {
                   
                   {pipelineState.matchedImage && (
                     <div>
+                      {/* Step 1 Results */}
                       <div style={{ 
                         backgroundColor: '#dcfce7', 
                         padding: '10px 15px', 
@@ -580,7 +620,7 @@ const GardenDetailPage = () => {
                         marginBottom: '15px'
                       }}>
                         <p style={{ color: '#16a34a', fontWeight: 'bold', marginBottom: '5px' }}>
-                          ✅ Plant Template Found!
+                          ✅ Step 1 Complete: Plant Template Found!
                         </p>
                         <p style={{ color: '#666', fontSize: '0.85em' }}>
                           Similarity: {(pipelineState.matchInfo.similarity * 100).toFixed(1)}% • 
@@ -588,24 +628,168 @@ const GardenDetailPage = () => {
                         </p>
                       </div>
                       
+                      {/* Step 2 Results */}
+                      {pipelineState.detections && pipelineState.detectionSummary && (
+                        <div>
+                          {/* Warning if YOLO didn't work */}
+                          {pipelineState.detectionWarning && (
+                            <div style={{ 
+                              backgroundColor: '#fef3c7', 
+                              border: '1px solid #f59e0b',
+                              padding: '10px 15px', 
+                              borderRadius: '8px',
+                              marginBottom: '15px'
+                            }}>
+                              <p style={{ color: '#92400e', fontWeight: 'bold', marginBottom: '5px' }}>
+                                ⚠️ YOLO Model Not Available
+                              </p>
+                              <p style={{ color: '#78350f', fontSize: '0.85em' }}>
+                                {pipelineState.detectionWarning}
+                              </p>
+                              <p style={{ color: '#78350f', fontSize: '0.8em', marginTop: '5px', fontStyle: 'italic' }}>
+                                Showing mock detection data for testing purposes.
+                              </p>
+                            </div>
+                          )}
+                          
+                          <div style={{ 
+                            backgroundColor: '#dbeafe', 
+                            padding: '10px 15px', 
+                            borderRadius: '8px',
+                            marginBottom: '15px'
+                          }}>
+                            <p style={{ color: '#1e40af', fontWeight: 'bold', marginBottom: '5px' }}>
+                              ✅ Step 2 Complete: Plant Symbols Detected!
+                            </p>
+                            <p style={{ color: '#666', fontSize: '0.85em', marginBottom: '8px' }}>
+                              Total Detections: <strong>{pipelineState.detectionSummary.totalDetections}</strong> plant symbols
+                            </p>
+                            <div style={{ fontSize: '0.8em', color: '#555' }}>
+                              <strong>Plant Types Found:</strong>
+                              <div style={{ marginTop: '5px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                {Object.entries(pipelineState.detectionSummary.classCounts).map(([className, count]) => (
+                                  <span key={className} style={{ 
+                                    backgroundColor: '#eff6ff', 
+                                    padding: '3px 8px', 
+                                    borderRadius: '4px',
+                                    fontSize: '0.75em'
+                                  }}>
+                                    {className.split('_')[0]}: {count}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Plant Placement Image */}
                       <div style={{ marginBottom: '15px' }}>
                         <p style={{ fontWeight: 'bold', marginBottom: '10px', color: '#333' }}>
                           Suggested Plant Placement:
                         </p>
-                        <img 
-                          src={pipelineState.matchedImage}
-                          alt="Matched plant placement template"
-                          style={{ 
-                            width: '100%', 
-                            maxWidth: '512px',
-                            height: 'auto', 
-                            border: '2px solid #22c55e', 
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 12px rgba(34, 197, 94, 0.2)'
-                          }}
-                        />
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <img 
+                            src={pipelineState.matchedImage}
+                            alt="Matched plant placement template"
+                            style={{ 
+                              width: '100%', 
+                              maxWidth: '512px',
+                              height: 'auto', 
+                              border: '2px solid #22c55e', 
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.2)'
+                            }}
+                          />
+                          {/* Overlay detection boxes if available */}
+                          {pipelineState.detections && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              pointerEvents: 'none'
+                            }}>
+                              {pipelineState.detections.slice(0, 50).map((detection, idx) => {
+                                const img = document.querySelector('img[alt="Matched plant placement template"]');
+                                if (!img) return null;
+                                const scaleX = img.offsetWidth / 512;
+                                const scaleY = img.offsetHeight / 512;
+                                
+                                return (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      position: 'absolute',
+                                      left: `${detection.bbox.x1 * scaleX}px`,
+                                      top: `${detection.bbox.y1 * scaleY}px`,
+                                      width: `${detection.bbox.width * scaleX}px`,
+                                      height: `${detection.bbox.height * scaleY}px`,
+                                      border: '2px solid rgba(34, 197, 94, 0.6)',
+                                      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                      borderRadius: '2px',
+                                      pointerEvents: 'none'
+                                    }}
+                                    title={`${detection.class} (${(detection.confidence * 100).toFixed(0)}%)`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       
+                      {/* Detection Details Table */}
+                      {pipelineState.detections && pipelineState.detections.length > 0 && (
+                        <div style={{ marginBottom: '15px' }}>
+                          <p style={{ fontWeight: 'bold', marginBottom: '10px', color: '#333' }}>
+                            Detection Details:
+                          </p>
+                          <div style={{ 
+                            maxHeight: '200px', 
+                            overflowY: 'auto',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            padding: '10px',
+                            backgroundColor: '#f9fafb'
+                          }}>
+                            <table style={{ width: '100%', fontSize: '0.85em' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '1px solid #e0e0e0' }}>
+                                  <th style={{ textAlign: 'left', padding: '5px' }}>ID</th>
+                                  <th style={{ textAlign: 'left', padding: '5px' }}>Plant Type</th>
+                                  <th style={{ textAlign: 'left', padding: '5px' }}>Confidence</th>
+                                  <th style={{ textAlign: 'left', padding: '5px' }}>Location</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {pipelineState.detections.slice(0, 20).map((detection) => (
+                                  <tr key={detection.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                    <td style={{ padding: '5px' }}>{detection.id}</td>
+                                    <td style={{ padding: '5px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {detection.class.split('_')[0]}
+                                    </td>
+                                    <td style={{ padding: '5px' }}>
+                                      {(detection.confidence * 100).toFixed(0)}%
+                                    </td>
+                                    <td style={{ padding: '5px', fontSize: '0.75em' }}>
+                                      ({detection.bbox.centerX.toFixed(0)}, {detection.bbox.centerY.toFixed(0)})
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            {pipelineState.detections.length > 20 && (
+                              <p style={{ marginTop: '10px', fontSize: '0.8em', color: '#666', textAlign: 'center' }}>
+                                ... and {pipelineState.detections.length - 20} more detections
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Action Buttons */}
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <Button 
                           onClick={() => {
@@ -618,19 +802,31 @@ const GardenDetailPage = () => {
                         >
                           📥 Download Template
                         </Button>
+                        {pipelineState.detections && (
+                          <Button 
+                            onClick={() => {
+                              const dataStr = JSON.stringify({
+                                match: pipelineState.matchInfo,
+                                detections: pipelineState.detections,
+                                summary: pipelineState.detectionSummary
+                              }, null, 2);
+                              const blob = new Blob([dataStr], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = `${garden.name}-detections.json`;
+                              link.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            variant="secondary"
+                          >
+                            📊 Download Detection Data
+                          </Button>
+                        )}
                         <Button onClick={handleClearPipeline} variant="secondary">
                           🔄 Generate Again
                         </Button>
                       </div>
-                      
-                      <p style={{ 
-                        color: '#666', 
-                        fontSize: '0.85em', 
-                        marginTop: '15px',
-                        fontStyle: 'italic'
-                      }}>
-                        Note: Step 2 (YOLO plant detection) will be added in the next update.
-                      </p>
                     </div>
                   )}
                 </div>

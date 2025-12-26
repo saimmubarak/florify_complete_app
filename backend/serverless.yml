@@ -156,6 +156,20 @@ functions:
           method: post
           cors: true
 
+  detect-plants:
+    # Container-based Lambda for YOLO (includes PyTorch + ultralytics)
+    # Build and push container first using: build-yolo-container.bat
+    # Image URI: 813089398751.dkr.ecr.eu-north-1.amazonaws.com/florify-yolo-detection:latest
+    image:
+      uri: ${env:ECR_IMAGE_URI, '813089398751.dkr.ecr.eu-north-1.amazonaws.com/florify-yolo-detection:latest'}
+    timeout: 60  # YOLO detection may take longer
+    memorySize: 3008  # YOLO models need more memory
+    events:
+      - http:
+          path: pipeline/detect
+          method: post
+          cors: true
+
   # Test
   hello:
     handler: handler.hello

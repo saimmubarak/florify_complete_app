@@ -205,6 +205,38 @@ export const matchBlueprint = async (pipelineImage, gardenId) => {
   }
 };
 
+/**
+ * Detect plant symbols in a filled blueprint image using YOLO
+ * This is Step 2 of the plant placement pipeline
+ * 
+ * @param {string} filledImage - Base64 data URL of the matched filled blueprint PNG
+ * @param {string} gardenId - The garden ID
+ * @param {number} confidenceThreshold - Optional confidence threshold (default 0.25)
+ * @param {number} iouThreshold - Optional IoU threshold (default 0.45)
+ * @returns {Promise<Object>} Detection results with plant symbols and locations
+ */
+export const detectPlants = async (filledImage, gardenId, confidenceThreshold = 0.25, iouThreshold = 0.45) => {
+  try {
+    console.log('🎯 Detecting plant symbols with YOLO...');
+    console.log('Filled image size:', filledImage.length, 'bytes');
+    console.log('Garden ID:', gardenId);
+    console.log('Confidence threshold:', confidenceThreshold);
+    
+    const response = await api.post('/pipeline/detect', {
+      filledImage,
+      gardenId,
+      confidenceThreshold,
+      iouThreshold
+    });
+    
+    console.log('✅ Plant detection complete:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Plant detection failed:', error);
+    throw error;
+  }
+};
+
 export default {
   createBlueprint,
   getBlueprint,
@@ -214,4 +246,5 @@ export default {
   fetchBlueprintImages,
   downloadBlueprintImage,
   matchBlueprint,
+  detectPlants,
 };

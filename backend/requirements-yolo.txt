@@ -1,0 +1,19 @@
+# Requirements for YOLO Plant Detection Lambda Container
+# These packages are too large for standard Lambda deployment
+
+# Core AWS Lambda dependencies
+boto3
+botocore
+
+# YOLO and ML dependencies
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+Pillow>=9.0.0
+numpy>=1.21.0
+opencv-python-headless>=4.5.0
+
+# Authentication (if needed)
+python-jose[cryptography]
+PyJWT
+
