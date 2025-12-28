@@ -1,10 +1,31 @@
 
-Initializing
-Initializing
-Resolving variables
-Authenticating
-Finalizing
+Deploying "florify-simple" to stage "dev" (eu-north-1)
+(node:103988) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[!] Function match-blueprint has a timeout of 30 seconds, but it is attached to an API Gateway with a timeout of 29 seconds. 
+[!] Function detect-plants has a timeout of 60 seconds, but it is attached to an API Gateway with a timeout of 29 seconds. 
+✖ Stack florify-simple-dev failed to deploy (123s)
 
-✖ Unable to reach the Serverless API (fetch failed; getaddrinfo EAI_AGAIN core.serverless.com; code: EAI_AGAIN).
-Please verify your network connection and try again.
+✖ ServerlessError2: An error occurred: DetectDashplantsLambdaFunction - Resource handler returned message: "The image manifest, config or layer media type for the source image 813089398751.dkr.ecr.eu-north-1.amazonaws.com/florify-yolo-detection@sha256:de866f3a369a0c21e4842a7d6b1270b1fce896c0e79ffd8fdbb943fff391fbf5 is not supported. (Service: Lambda, Status Code: 400, Request ID: 951f5ae9-0538-479f-b482-849534b4b8f5) (SDK Attempt Count: 1)" (RequestToken: f23d1b48-02c8-3084-8728-81e739590291, HandlerErrorCode: InvalidRequest).
+    at file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1183:828
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsDeploy.update (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1183:25328)
+    at async aws:deploy:deploy:updateStack (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1194:8004)
+    at async PluginManager.runHooks (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1459:11105)
+    at async PluginManager.invoke (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1459:11874)
+    at async PluginManager.spawn (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1459:12236)
+    at async PluginManager.runHooks (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1459:11105)
+    at async PluginManager.invoke (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1459:11874)
+    at async PluginManager.run (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1459:12607)
+    at async Serverless.run (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1466:10524)
+    at async runFramework (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1493:1781)
+    at async TraditionalRunner.run (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1489:28508)
+    at async route (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1664:2848)
+    at async Object.run (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1665:3876)
+    at async run2 (file:///C:/Users/M%20Saim%20Mubarak/.serverless/releases/4.29.0/package/dist/sf-core.js:1665:5030)
+
+For help, try the following:
+  • Run the command again with the "--debug" option
+  • Run "serverless support"
+  • Review the docs: https://www.serverless.com/framework/docs/
 

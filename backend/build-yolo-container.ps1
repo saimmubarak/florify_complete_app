@@ -34,9 +34,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Step 3: Build Docker image
-Write-Host "🔨 Building Docker image..." -ForegroundColor Yellow
+Write-Host "🔨 Building Docker image (this may take 10-20 minutes)..." -ForegroundColor Yellow
+Write-Host "   Using linux/amd64 platform for Lambda compatibility..." -ForegroundColor Yellow
 $imageName = "${ECR_REPOSITORY}:${IMAGE_TAG}"
-docker build -f Dockerfile.detect-plants -t $imageName .
+docker build --platform linux/amd64 --provenance=false -f Dockerfile.detect-plants -t $imageName .
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Docker build failed" -ForegroundColor Red
     exit 1
@@ -56,10 +57,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host "✅ Container built and pushed successfully!" -ForegroundColor Green
+Write-Host "Container built and pushed successfully!" -ForegroundColor Green
 Write-Host "   Image URI: $ECR_URI" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "📝 Next steps:" -ForegroundColor Yellow
-Write-Host "   1. Set environment variable: `$env:ECR_IMAGE_URI = '$ECR_URI'"
-Write-Host "   2. Run: serverless deploy --function detect-plants"
+Write-Host "Next steps:" -ForegroundColor Yellow
+Write-Host "   1. Run: serverless deploy"
 
