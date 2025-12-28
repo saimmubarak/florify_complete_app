@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(aws logs tail:*)",
+      "Bash(aws lambda get-function-configuration:*)",
+      "Bash(aws lambda get-function:*)",
+      "Bash(aws ecr describe-images:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(if [ -d \"node_modules\" ])",
+      "Bash(then echo \"✅ node_modules exists\")",
+      "Bash(else echo \"❌ node_modules missing - need to run npm install\")",
+      "Bash(fi)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(docker build:*)",
+      "Bash(xargs:*)",
+      "Bash(tee:*)",
+      "Bash(docker run:*)",
+      "Bash(cmd /c build-yolo-container.bat)",
+      "Bash(aws ecr get-login-password:*)",
+      "Bash(docker login:*)",
+      "Bash(docker tag:*)",
+      "Bash(docker push:*)",
+      "Bash(serverless deploy:*)",
+      "Bash(aws lambda update-function-code:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c taskkill /PID 30708 /F)",
+      "Bash(cmd /c taskkill /PID 9172 /F)",
+      "Bash(powershell -Command:*)",
+      "Bash(aws ecr batch-get-image:*)",
+      "Bash(docker buildx build:*)",
+      "Bash(aws lambda update-function-configuration:*)"
+    ]
+  }
+}

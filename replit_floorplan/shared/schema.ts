@@ -134,6 +134,37 @@ export const PATIO_WIDTHS = {
 } as const;
 
 // ============================================
+// PLANT SYMBOL TYPES (for planted-garden step)
+// ============================================
+
+export const PlantSymbol = z.object({
+  id: z.string(),
+  className: z.string(), // YOLO class name
+  confidence: z.number(),
+  x: z.number(), // Position in YOLO coordinates (0-512)
+  y: z.number(), // Position in YOLO coordinates (0-512)
+  plantCategory: z.string(), // Tree, Shrub, Perennial
+  canopySizeCategory: z.number(), // 1-4
+  heightCategory: z.number(), // 1-4
+  floweringBool: z.number(), // 0 or 1
+  fruitingBool: z.number(), // 0 or 1
+  foliageType: z.string(), // Evergreen or Deciduous
+  symbolImage: z.string(), // Path to symbol image
+  diameter: z.number(), // Diameter in pixels (at 10.03px/ft scale)
+  // Extra properties (filled in Step 4)
+  plantBotanicalName: z.string().default('NA'),
+  plantCommonName: z.string().default('NA'),
+  plantFlowerColor: z.string().default('NA'),
+  plantHeight: z.string().default('NA'),
+  plantSpread: z.string().default('NA'),
+  plantLeafColor: z.string().default('NA'),
+  sunExposure: z.string().default('NA'),
+  plantingZone: z.string().default('NA'),
+  plantPicture: z.string().default('NA'),
+});
+export type PlantSymbol = z.infer<typeof PlantSymbol>;
+
+// ============================================
 // WIZARD & PROJECT TYPES
 // ============================================
 
@@ -146,6 +177,7 @@ export const WizardStep = z.enum([
   'add-pathways',
   'add-patios',
   'export-save',
+  'planted-garden', // NEW: Step 9 - Plant symbols from YOLO detections (after export)
 ]);
 export type WizardStep = z.infer<typeof WizardStep>;
 
@@ -158,6 +190,7 @@ export const FloorplanProject = z.object({
   driveways: z.array(Driveway).default([]),
   pathways: z.array(Pathway).default([]),
   patios: z.array(Patio).default([]),
+  plantSymbols: z.array(PlantSymbol).default([]), // NEW: Plant symbols from YOLO
   viewTransform: ViewTransform,
   createdAt: z.string(),
   updatedAt: z.string(),

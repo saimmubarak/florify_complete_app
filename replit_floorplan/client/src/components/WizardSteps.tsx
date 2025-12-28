@@ -16,6 +16,7 @@ const steps: StepConfig[] = [
   { id: 'add-pathways', label: 'Pathways', number: 6 },
   { id: 'add-patios', label: 'Patio/Reception', number: 7 },
   { id: 'export-save', label: 'Export/Save', number: 8 },
+  { id: 'planted-garden', label: 'Planted Garden', number: 9 },
 ];
 
 interface WizardStepsProps {

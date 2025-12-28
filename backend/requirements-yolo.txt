@@ -1,19 +1,24 @@
 # Requirements for YOLO Plant Detection Lambda Container
-# These packages are too large for standard Lambda deployment
+# Optimized for CPU-only inference (no GPU/CUDA needed)
 
 # Core AWS Lambda dependencies
 boto3
 botocore
 
-# YOLO and ML dependencies
-ultralytics>=8.0.0
-torch>=2.0.0
-torchvision>=0.15.0
-Pillow>=9.0.0
-numpy>=1.21.0
+# YOLO and ML dependencies - MINIMAL VERSIONS
+# Install opencv-python-headless BEFORE ultralytics to prevent opencv-python installation
 opencv-python-headless>=4.5.0
 
-# Authentication (if needed)
+# PyTorch CPU-only (saves ~2GB by excluding CUDA libraries)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.0+cpu
+torchvision==0.17.0+cpu
+
+# YOLO and other dependencies
+ultralytics>=8.0.0
+Pillow>=9.0.0
+numpy<2.0.0
+
+# Authentication
 python-jose[cryptography]
 PyJWT
-

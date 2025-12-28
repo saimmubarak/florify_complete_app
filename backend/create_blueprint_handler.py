@@ -6,6 +6,7 @@ import base64
 from datetime import datetime
 from botocore.exceptions import ClientError
 from simple_auth import require_auth, respond
+from image_processing import process_blueprint_to_pipeline_dataurl
 
 dynamodb = boto3.resource('dynamodb')
 s3 = boto3.client('s3')
@@ -77,10 +78,10 @@ def handler(event, context):
         blueprint_data = body.get("blueprintData", {})
         name = body.get("name", "Garden Blueprint")
         
-        # New PNG fields
+        # PNG fields
         png_with_skins = body.get("pngWithSkins", "")
         png_without_skins = body.get("pngWithoutSkins", "")
-        
+
         # Legacy support for old field names
         if not png_with_skins:
             png_with_skins = body.get("pngImage", "")
@@ -97,16 +98,31 @@ def handler(event, context):
         # Generate unique blueprint ID
         blueprint_id = str(uuid.uuid4())
         current_time = datetime.utcnow().isoformat()
-        
+
         # Upload images to S3
         s3_png_with_skins = ""
         s3_png_without_skins = ""
-        
+        s3_pipeline_png_with_skins = ""
+
         if png_with_skins and png_with_skins.startswith('data:'):
             s3_key_with_skins = f"blueprints/{user_id}/{garden_id}/{blueprint_id}/with-skins.png"
             s3_png_with_skins = upload_image_to_s3(png_with_skins, s3_key_with_skins)
             print(f"Uploaded PNG with skins to: {s3_png_with_skins}")
-        
+
+            # Generate 512×512 pipeline PNG from the full-size PNG with skins
+            try:
+                print("🎨 Generating 512×512 pipeline PNG from full-size PNG with skins...")
+                pipeline_png_with_skins = process_blueprint_to_pipeline_dataurl(png_with_skins, output_size=512)
+                print(f"✅ Pipeline PNG generated, size: {len(pipeline_png_with_skins)} bytes")
+
+                # Upload pipeline PNG to S3
+                s3_key_pipeline = f"blueprints/{user_id}/{garden_id}/{blueprint_id}/pipeline-with-skins.png"
+                s3_pipeline_png_with_skins = upload_image_to_s3(pipeline_png_with_skins, s3_key_pipeline)
+                print(f"Uploaded 512×512 pipeline PNG with skins to: {s3_pipeline_png_with_skins}")
+            except Exception as e:
+                print(f"⚠️ Failed to generate pipeline PNG: {e}")
+                # Continue without pipeline PNG - not critical for blueprint creation
+
         if png_without_skins and png_without_skins.startswith('data:'):
             s3_key_without_skins = f"blueprints/{user_id}/{garden_id}/{blueprint_id}/without-skins.png"
             s3_png_without_skins = upload_image_to_s3(png_without_skins, s3_key_without_skins)
@@ -121,6 +137,7 @@ def handler(event, context):
             "blueprintData": json.dumps(blueprint_data),  # Store as JSON string
             "pngWithSkinsUrl": s3_png_with_skins,  # S3 URL for PNG with skins
             "pngWithoutSkinsUrl": s3_png_without_skins,  # S3 URL for PNG without skins
+            "pipelinePngWithSkinsUrl": s3_pipeline_png_with_skins,  # S3 URL for 512×512 pipeline PNG with skins
             "createdAt": current_time,
             "updatedAt": current_time
         }
@@ -141,6 +158,7 @@ def handler(event, context):
             "blueprintData": blueprint_data,  # Return as object
             "pngWithSkinsUrl": s3_png_with_skins,
             "pngWithoutSkinsUrl": s3_png_without_skins,
+            "pipelinePngWithSkinsUrl": s3_pipeline_png_with_skins,
             "createdAt": current_time,
             "updatedAt": current_time
         }

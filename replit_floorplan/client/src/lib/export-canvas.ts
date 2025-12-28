@@ -335,7 +335,172 @@ export async function generatePipelineImage(
 }
 
 /**
- * Download the pipeline image as a 512x512 PNG file
+ * Generate a 512x512 PNG WITH SKINS for the Interactive Plant Placement
+ *
+ * Similar to generatePipelineImage but includes visual skins (textures/patterns)
+ * for driveways, pathways, patios, walls, and roofs.
+ *
+ * @param shapes - Floorplan shapes (plot, house, walls)
+ * @param doors - Door elements
+ * @param driveways - Driveway elements
+ * @param pathways - Pathway elements
+ * @param patios - Patio elements
+ * @returns Base64 data URL of 512x512 PNG with skins
+ */
+export async function generatePipelineImageWithSkins(
+  shapes: FloorplanShape[],
+  doors: Door[],
+  driveways: Driveway[],
+  pathways: Pathway[],
+  patios: Patio[]
+): Promise<string> {
+  console.log('🎨 generatePipelineImageWithSkins called');
+  console.log('Shapes:', shapes.length, 'Doors:', doors.length, 'Driveways:', driveways.length, 'Pathways:', pathways.length, 'Patios:', patios.length);
+
+  const SCALE_FACTOR = 3;
+  const OUTPUT_SIZE = 512;
+  const DPI = 150;
+  const ppf = pixelsPerFoot(DPI);
+
+  // Calculate bounding box
+  const allVertices: { x: number; y: number }[] = [];
+  shapes.forEach(shape => shape.vertices.forEach(v => allVertices.push(v)));
+  driveways.forEach(driveway => driveway.vertices.forEach(v => allVertices.push(v)));
+  pathways.forEach(pathway => pathway.vertices.forEach(v => allVertices.push(v)));
+  patios.forEach(patio => patio.vertices.forEach(v => allVertices.push(v)));
+  doors.forEach(door => allVertices.push(door.position));
+
+  console.log('Total vertices:', allVertices.length);
+
+  if (allVertices.length === 0) {
+    throw new Error('No elements to export');
+  }
+
+  const minX = Math.min(...allVertices.map(v => v.x));
+  const maxX = Math.max(...allVertices.map(v => v.x));
+  const minY = Math.min(...allVertices.map(v => v.y));
+  const maxY = Math.max(...allVertices.map(v => v.y));
+
+  const contentWidth = maxX - minX;
+  const contentHeight = maxY - minY;
+  const scaledWidth = contentWidth * SCALE_FACTOR * ppf;
+  const scaledHeight = contentHeight * SCALE_FACTOR * ppf;
+
+  console.log('Bounds:', { minX, maxX, minY, maxY, contentWidth, contentHeight, scaledWidth, scaledHeight });
+
+  // Create full canvas
+  const fullCanvas = document.createElement('canvas');
+  fullCanvas.width = scaledWidth;
+  fullCanvas.height = scaledHeight;
+  const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: false, alpha: false });
+
+  if (!fullCtx) {
+    throw new Error('Failed to get canvas context');
+  }
+
+  fullCtx.imageSmoothingEnabled = true;
+  fullCtx.imageSmoothingQuality = 'high';
+  fullCtx.fillStyle = '#ffffff';
+  fullCtx.fillRect(0, 0, scaledWidth, scaledHeight);
+
+  // Create view transform for rendering functions
+  const viewTransform = {
+    zoom: SCALE_FACTOR,
+    panX: -minX * SCALE_FACTOR * ppf,
+    panY: -minY * SCALE_FACTOR * ppf,
+  };
+
+  const canvasSize = { width: scaledWidth, height: scaledHeight };
+
+  // Render with skins (similar to export functions)
+  // 1. Draw plot boundary
+  shapes.forEach(shape => {
+    if (shape.layer === 'plot') {
+      drawShape(fullCtx, shape, viewTransform, canvasSize, DPI);
+    }
+  });
+
+  // 2. Draw driveways with skins
+  driveways.forEach(driveway => {
+    drawDrivewaySkin(fullCtx, driveway, viewTransform, canvasSize, DPI);
+    drawDrivewayStructure(fullCtx, driveway, viewTransform, canvasSize, DPI);
+  });
+
+  // 3. Draw pathways with skins
+  pathways.forEach(pathway => {
+    drawPathwaySkin(fullCtx, pathway, viewTransform, canvasSize, DPI);
+    drawPathwayStructure(fullCtx, pathway, viewTransform, canvasSize, DPI);
+  });
+
+  // 4. Draw patios with skins
+  patios.forEach(patio => {
+    drawPatioSkin(fullCtx, patio, viewTransform, canvasSize, DPI);
+    drawPatioStructure(fullCtx, patio, viewTransform, canvasSize, DPI);
+  });
+
+  // 5. Draw house with roof skin
+  shapes.forEach(shape => {
+    if (shape.layer === 'house') {
+      drawShape(fullCtx, shape, viewTransform, canvasSize, DPI);
+      drawRoof(fullCtx, shape, viewTransform, canvasSize, 0.9, DPI);
+    }
+  });
+
+  // 6. Draw walls with skins
+  shapes.forEach(shape => {
+    if (shape.layer === 'wall') {
+      drawShape(fullCtx, shape, viewTransform, canvasSize, DPI);
+      drawWallSkin(fullCtx, shape, viewTransform, canvasSize, DPI);
+    }
+  });
+
+  // 7. Draw doors with skins
+  doors.forEach(door => {
+    const wallShape = shapes.find(s => s.id === door.wallShapeId);
+    if (wallShape) {
+      drawDoorLine(fullCtx, door, wallShape, viewTransform, canvasSize, DPI);
+      drawDoorSkin(fullCtx, door, wallShape, viewTransform, canvasSize, DPI);
+    }
+  });
+
+  // Crop bottom 50%
+  const cropStartY = scaledHeight / 2;
+  const cropHeight = scaledHeight / 2;
+
+  console.log('Cropping:', { cropStartY, cropHeight, scaledWidth });
+
+  // Create 512x512 output
+  const outputCanvas = document.createElement('canvas');
+  outputCanvas.width = OUTPUT_SIZE;
+  outputCanvas.height = OUTPUT_SIZE;
+  const outputCtx = outputCanvas.getContext('2d', { willReadFrequently: false, alpha: false });
+
+  if (!outputCtx) {
+    throw new Error('Failed to get output canvas context');
+  }
+
+  outputCtx.imageSmoothingEnabled = true;
+  outputCtx.imageSmoothingQuality = 'high';
+  outputCtx.fillStyle = '#ffffff';
+  outputCtx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
+  // Draw cropped portion
+  outputCtx.drawImage(
+    fullCanvas,
+    0, cropStartY,
+    scaledWidth, cropHeight,
+    0, 0,
+    OUTPUT_SIZE, OUTPUT_SIZE
+  );
+
+  const dataUrl = outputCanvas.toDataURL('image/png');
+  console.log('✅ Pipeline PNG with skins generated, data URL length:', dataUrl.length);
+
+  return dataUrl;
+}
+
+/**
+ * Download the pipeline image as a 512x512 PNG file (without skins)
  */
 export async function downloadPipelineImage(
   shapes: FloorplanShape[],
@@ -345,15 +510,42 @@ export async function downloadPipelineImage(
   patios: Patio[]
 ): Promise<void> {
   const result = await generatePipelineImage(shapes, doors, driveways, pathways, patios);
-  
+
   // Convert data URL to blob and download
   const response = await fetch(result.pipelineImage);
   const blob = await response.blob();
-  
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = `pipeline-floorplan-512x512-${Date.now()}.png`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Download the pipeline image WITH SKINS as a 512x512 PNG file
+ * This is used for the Interactive Plant Placement background
+ */
+export async function downloadPipelineImageWithSkins(
+  shapes: FloorplanShape[],
+  doors: Door[],
+  driveways: Driveway[],
+  pathways: Pathway[],
+  patios: Patio[]
+): Promise<void> {
+  const imageDataUrl = await generatePipelineImageWithSkins(shapes, doors, driveways, pathways, patios);
+
+  // Convert data URL to blob and download
+  const response = await fetch(imageDataUrl);
+  const blob = await response.blob();
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `pipeline-with-skins-512x512-${Date.now()}.png`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

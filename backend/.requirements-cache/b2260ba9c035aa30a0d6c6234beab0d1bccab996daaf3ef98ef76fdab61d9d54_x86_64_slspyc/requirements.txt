@@ -1,0 +1,7 @@
+PyJWT
+boto3
+botocore
+numpy
+pillow
+python-jose[cryptography]
+requests

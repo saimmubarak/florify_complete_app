@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getGarden, updateGarden, deleteGarden } from '../api/gardens';
 import { getBlueprintByGarden, getBlueprintImageUrls, downloadBlueprintImage, matchBlueprint, detectPlants } from '../api/blueprints';
+import { parseAllDetections } from '../utils/plantSymbolParser';
 import Button from '../components/Button';
 import InputField from '../components/InputField';
+import PlantedGardenCanvas from '../components/PlantedGardenCanvas';
 import './GardenDetailPage.css';
 
 const GardenDetailPage = () => {
@@ -75,7 +77,7 @@ const GardenDetailPage = () => {
     }
   };
 
-  const handleViewBlueprint = () => {
+  const handleViewBlueprint = (autoStep = null) => {
     if (!blueprint) return;
 
     // Get user ID and token
@@ -91,8 +93,23 @@ const GardenDetailPage = () => {
       }
     }
 
-    // Open replit floorplan in new tab with edit mode, auto-navigate to export, and pass token
-    const blueprintUrl = `http://localhost:5001/?mode=edit&blueprint_id=${blueprint.blueprintId}&garden_id=${gardenId}&user_id=${userId}&auto_step=export&token=${encodeURIComponent(token || '')}`;
+    // Determine which step to navigate to:
+    // - If pipeline completed (has detections), go to planted-garden
+    // - Otherwise, use provided autoStep or default to planted-garden if blueprint has plantSymbols
+    let targetStep = autoStep;
+    if (!targetStep) {
+      // Check if blueprint was updated with plant symbols from pipeline
+      if (pipelineState.detections && pipelineState.detections.length > 0) {
+        targetStep = 'planted-garden';
+      } else if (blueprint.blueprintData && blueprint.blueprintData.plantSymbols && blueprint.blueprintData.plantSymbols.length > 0) {
+        targetStep = 'planted-garden';
+      } else {
+        targetStep = 'export'; // Default to export step
+      }
+    }
+
+    // Open replit floorplan in new tab with edit mode, auto-navigate to specified step, and pass token
+    const blueprintUrl = `http://localhost:5001/?mode=edit&blueprint_id=${blueprint.blueprintId}&garden_id=${gardenId}&user_id=${userId}&auto_step=${targetStep}&token=${encodeURIComponent(token || '')}`;
     window.open(blueprintUrl, '_blank', 'width=1200,height=800');
   };
 
@@ -252,7 +269,7 @@ const GardenDetailPage = () => {
       
       console.log('✅ Step 2 Complete - Detections:', detectionResult);
       console.log(`Found ${detectionResult.summary.totalDetections} plant symbols`);
-      
+
       // Update state with detection results
       setPipelineState(prev => ({
         ...prev,
@@ -262,6 +279,70 @@ const GardenDetailPage = () => {
         detectionSummary: detectionResult.summary,
         detectionWarning: detectionResult.warning || (detectionResult.isMock ? 'YOLO model not available - using mock data' : null)
       }));
+
+      // ========== STEP 3: Update Blueprint with Plant Symbols ==========
+      console.log('Step 3: Updating blueprint with plant symbols...');
+
+      // Parse YOLO detections into PlantSymbol format
+      const plantSymbols = parseAllDetections(detectionResult.detections);
+      console.log(`Parsed ${plantSymbols.length} plant symbols:`, plantSymbols);
+
+      // Log first plant symbol for debugging
+      if (plantSymbols.length > 0) {
+        console.log('Sample plant symbol:', JSON.stringify(plantSymbols[0], null, 2));
+      }
+
+      // Update blueprint in replit_floorplan database
+      if (blueprint && blueprint.blueprintId) {
+        try {
+          const token = localStorage.getItem('token');
+
+          const requestBody = {
+            plantSymbols: plantSymbols,
+            currentStep: 'planted-garden'
+          };
+
+          console.log('Sending PATCH request to update blueprint:', {
+            url: `http://localhost:5001/api/projects/${blueprint.blueprintId}`,
+            body: requestBody
+          });
+
+          const updateResponse = await fetch(`http://localhost:5001/api/projects/${blueprint.blueprintId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token || ''}`
+            },
+            body: JSON.stringify(requestBody)
+          });
+
+          console.log('PATCH response status:', updateResponse.status);
+
+          if (!updateResponse.ok) {
+            const errorData = await updateResponse.json();
+            console.error('Failed to update blueprint - Full error:', errorData);
+            throw new Error(errorData.error || 'Failed to update blueprint with plant symbols');
+          }
+
+          const updatedBlueprint = await updateResponse.json();
+          console.log('✅ Step 3 Complete - Blueprint updated with plant symbols:', updatedBlueprint);
+
+          // Update local blueprint state
+          setBlueprint(updatedBlueprint);
+
+          // Don't auto-navigate - user will click "View Blueprint" button to see planted-garden
+          console.log('Blueprint ready with planted-garden step. User can click "View Blueprint" to see it.');
+
+        } catch (updateError) {
+          console.error('❌ Failed to update blueprint with plant symbols:', updateError);
+          setPipelineState(prev => ({
+            ...prev,
+            error: `Pipeline completed but failed to update blueprint: ${updateError.message}`
+          }));
+        }
+      } else {
+        console.warn('No blueprint found to update with plant symbols');
+      }
       
     } catch (err) {
       console.error('❌ Pipeline error:', err);
@@ -788,7 +869,36 @@ const GardenDetailPage = () => {
                           </div>
                         </div>
                       )}
-                      
+
+                      {/* Step 3: Interactive Plant Placement Canvas */}
+                      {pipelineState.detections && pipelineState.detections.length > 0 && (
+                        <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+                          <div style={{
+                            backgroundColor: '#f0f9ff',
+                            padding: '10px 15px',
+                            borderRadius: '8px',
+                            marginBottom: '15px'
+                          }}>
+                            <p style={{ color: '#0369a1', fontWeight: 'bold', marginBottom: '5px' }}>
+                              ✅ Step 3: Interactive Plant Placement
+                            </p>
+                            <p style={{ color: '#666', fontSize: '0.85em' }}>
+                              View and adjust plant positions on your garden blueprint. Drag plants to reposition them.
+                            </p>
+                          </div>
+
+                          <PlantedGardenCanvas
+                            detections={pipelineState.detections}
+                            blueprint={blueprint}
+                            floorplanImage={blueprintImages.pipelinePngWithSkins}
+                            onPlantsUpdate={(updatedPlants) => {
+                              console.log('Plants updated:', updatedPlants);
+                              // Store updated plant positions for Step 4
+                            }}
+                          />
+                        </div>
+                      )}
+
                       {/* Action Buttons */}
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <Button 
