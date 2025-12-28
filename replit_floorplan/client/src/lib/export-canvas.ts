@@ -354,9 +354,6 @@ export async function generatePipelineImageWithSkins(
   pathways: Pathway[],
   patios: Patio[]
 ): Promise<string> {
-  console.log('🎨 generatePipelineImageWithSkins called');
-  console.log('Shapes:', shapes.length, 'Doors:', doors.length, 'Driveways:', driveways.length, 'Pathways:', pathways.length, 'Patios:', patios.length);
-
   const SCALE_FACTOR = 3;
   const OUTPUT_SIZE = 512;
   const DPI = 150;
@@ -369,8 +366,6 @@ export async function generatePipelineImageWithSkins(
   pathways.forEach(pathway => pathway.vertices.forEach(v => allVertices.push(v)));
   patios.forEach(patio => patio.vertices.forEach(v => allVertices.push(v)));
   doors.forEach(door => allVertices.push(door.position));
-
-  console.log('Total vertices:', allVertices.length);
 
   if (allVertices.length === 0) {
     throw new Error('No elements to export');
@@ -385,8 +380,6 @@ export async function generatePipelineImageWithSkins(
   const contentHeight = maxY - minY;
   const scaledWidth = contentWidth * SCALE_FACTOR * ppf;
   const scaledHeight = contentHeight * SCALE_FACTOR * ppf;
-
-  console.log('Bounds:', { minX, maxX, minY, maxY, contentWidth, contentHeight, scaledWidth, scaledHeight });
 
   // Create full canvas
   const fullCanvas = document.createElement('canvas');
@@ -467,8 +460,6 @@ export async function generatePipelineImageWithSkins(
   const cropStartY = scaledHeight / 2;
   const cropHeight = scaledHeight / 2;
 
-  console.log('Cropping:', { cropStartY, cropHeight, scaledWidth });
-
   // Create 512x512 output
   const outputCanvas = document.createElement('canvas');
   outputCanvas.width = OUTPUT_SIZE;
@@ -494,7 +485,6 @@ export async function generatePipelineImageWithSkins(
   );
 
   const dataUrl = outputCanvas.toDataURL('image/png');
-  console.log('✅ Pipeline PNG with skins generated, data URL length:', dataUrl.length);
 
   return dataUrl;
 }

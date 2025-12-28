@@ -1,0 +1,73 @@
+
+Initializing
+Initializing
+Resolving variables
+Authenticating
+Resolving variables
+Checking AWS credentials
+Resolving variables
+Loading service details
+Deploying "florify-simple" to stage "dev" (eu-north-1)
+Packaging
+(node:59928) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Generated requirements from C:\Users\M Saim Mubarak\Desktop\florify_claude\backend\requirements.txt in C:\Users\M Saim Mubarak\Desktop\florify_claude\backend\.serverless\requirements.txt
+Using static cache of requirements found at C:\Users\M Saim Mubarak\Desktop\florify_claude\backend\.requirements-cache\b2260ba9c035aa30a0d6c6234beab0d1bccab996daaf3ef98ef76fdab61d9d54_x86_64_slspyc
+Excluding development dependencies for function "signup"
+Excluding development dependencies for function "login"
+Excluding development dependencies for function "confirm"
+Excluding development dependencies for function "resend"
+Excluding development dependencies for function "create-garden"
+Excluding development dependencies for function "get-gardens"
+Excluding development dependencies for function "get-garden"
+Excluding development dependencies for function "update-garden"
+Excluding development dependencies for function "delete-garden"
+Excluding development dependencies for function "create-blueprint"
+Excluding development dependencies for function "get-blueprint"
+Excluding development dependencies for function "get-blueprint-by-garden"
+Excluding development dependencies for function "update-blueprint"
+Excluding development dependencies for function "match-blueprint"
+Excluding development dependencies for function "hello"
+Injecting required Python packages to package
+Injecting required Python packages to package
+Packaging
+[!] Function match-blueprint has a timeout of 30 seconds, but it is attached to an API Gateway with a timeout of 29 seconds. 
+[!] Function detect-plants has a timeout of 60 seconds, but it is attached to an API Gateway with a timeout of 29 seconds. 
+Retrieving AWS CloudFormation stack
+Uploading
+Uploading (0/15)
+Uploading CloudFormation file to S3
+Uploading State file to S3
+Uploading service signup.zip file to S3 (180.91 MB)
+Uploading service signup.zip file to S3 (180.91 MB)
+Uploading service login.zip file to S3 (180.91 MB)
+Uploading service login.zip file to S3 (180.91 MB)
+Uploading service confirm.zip file to S3 (180.91 MB)
+Uploading service confirm.zip file to S3 (180.91 MB)
+Uploading (1/15)
+Uploading service resend.zip file to S3 (180.91 MB)
+Uploading service resend.zip file to S3 (180.91 MB)
+Uploading (2/15)
+Uploading service create-garden.zip file to S3 (180.91 MB)
+Uploading service create-garden.zip file to S3 (180.91 MB)
+Uploading (3/15)
+Uploading service get-gardens.zip file to S3 (180.91 MB)
+Uploading service get-gardens.zip file to S3 (180.91 MB)
+Uploading (4/15)
+Uploading service get-garden.zip file to S3 (180.91 MB)
+Uploading service get-garden.zip file to S3 (180.91 MB)
+Uploading (5/15)
+Uploading service update-garden.zip file to S3 (180.91 MB)
+Uploading service update-garden.zip file to S3 (180.91 MB)
+Uploading (6/15)
+Uploading service delete-garden.zip file to S3 (180.91 MB)
+Uploading service delete-garden.zip file to S3 (180.91 MB)
+Uploading (7/15)
+Uploading service create-blueprint.zip file to S3 (180.91 MB)
+Uploading service create-blueprint.zip file to S3 (180.91 MB)
+Uploading (8/15)
+Uploading service get-blueprint.zip file to S3 (180.91 MB)
+Uploading service get-blueprint.zip file to S3 (180.91 MB)
+Uploading (9/15)
+Uploading service get-blueprint-by-garden.zip file to S3 (180.91 MB)
+Uploading service get-blueprint-by-garden.zip file to S3 (180.91 MB)

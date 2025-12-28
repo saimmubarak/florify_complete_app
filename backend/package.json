@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "serverless-api-gateway-integration-timeout": "^2.0.2",
     "serverless-python-requirements": "^6.1.2"
   }
 }

@@ -15,7 +15,7 @@ import { ExportDialog } from "@/components/ExportDialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateProject, useUpdateProject, usePrepareExport } from "@/hooks/useFloorplanProject";
-import { exportFloorplan, generateBlueprintImages, downloadPipelineImage, generatePipelineImage } from "@/lib/export-canvas";
+import { exportFloorplan, generateBlueprintImages, downloadPipelineImage, downloadPipelineImageWithSkins, generatePipelineImage, generatePipelineImageWithSkins } from "@/lib/export-canvas";
 import {
   type WizardStep,
   type FloorplanShape,
@@ -573,6 +573,37 @@ export default function Floorplan() {
     }
   }, [shapes, doors, driveways, pathways, patios, toast]);
 
+  // Pipeline Export WITH SKINS - Generate 512x512 PNG for Interactive Plant Placement background
+  const handlePipelineExportWithSkins = useCallback(async () => {
+    try {
+      toast({
+        title: "Processing Pipeline With Skins...",
+        description: "Generating 512x512 floorplan with visual skins",
+      });
+
+      console.log('🎨 Starting pipeline export with skins...');
+      console.log('Shapes:', shapes.length);
+      console.log('Doors:', doors.length);
+      console.log('Driveways:', driveways.length);
+      console.log('Pathways:', pathways.length);
+      console.log('Patios:', patios.length);
+
+      await downloadPipelineImageWithSkins(shapes, doors, driveways, pathways, patios);
+
+      toast({
+        title: "Pipeline With Skins Export Complete",
+        description: "512x512 PNG with visual skins downloaded",
+      });
+    } catch (error) {
+      console.error('Pipeline with skins export error:', error);
+      toast({
+        title: "Pipeline Export Failed",
+        description: error instanceof Error ? error.message : "Failed to generate pipeline image with skins",
+        variant: "destructive",
+      });
+    }
+  }, [shapes, doors, driveways, pathways, patios, toast]);
+
   // Save and send to Florify
   const handleSaveToFlorify = useCallback(async () => {
     try {
@@ -607,13 +638,20 @@ export default function Floorplan() {
       console.log('With skins size:', pngWithSkins.length, 'bytes');
       console.log('Without skins size:', pngWithoutSkins.length, 'bytes');
 
-      // Note: Pipeline PNG with skins is now generated on the backend from the full-size PNG
-      // This ensures correct processing and consistent output
+      // Generate 512×512 pipeline image WITH SKINS for Interactive Plant Placement background
+      console.log('🎨 Generating 512×512 pipeline image with skins...');
+      const pipelinePngWithSkins = await generatePipelineImageWithSkins(
+        shapes,
+        doors,
+        driveways,
+        pathways,
+        patios
+      );
+      console.log('✅ Pipeline image with skins generated, size:', pipelinePngWithSkins.length, 'bytes');
 
       // If in create mode, send to Florify API directly
       if (mode === 'create' && gardenId) {
         console.log('📤 Saving blueprint to Florify...');
-        console.log('Backend will generate 512×512 pipeline PNG from full-size PNG with skins');
 
         const token = localStorage.getItem('token');
         const response = await fetch(`https://jiazehdrvf.execute-api.eu-north-1.amazonaws.com/dev/blueprints`, {
@@ -627,6 +665,7 @@ export default function Floorplan() {
             blueprintData,
             pngWithSkins,
             pngWithoutSkins,
+            pipelinePngWithSkins,
             name: `Garden Blueprint`
           })
         });
@@ -667,6 +706,7 @@ export default function Floorplan() {
             blueprintData,
             pngWithSkins,
             pngWithoutSkins,
+            pipelinePngWithSkins,
           })
         });
 
@@ -957,17 +997,21 @@ export default function Floorplan() {
                   </Button>
                 </div>
 
-                {/* With Skins - Generated automatically on backend */}
+                {/* With Skins - For Interactive Placement Background */}
                 <div>
                   <p className="text-xs font-medium mb-2">With Visual Skins</p>
                   <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted/30 rounded">
-                    <p className="font-mono">• Auto-generated on backend</p>
+                    <p className="font-mono">• For plant placement UI</p>
                     <p className="font-mono">• 512×512 px with textures</p>
-                    <p className="font-mono">• Created when saving blueprint</p>
                   </div>
-                  <div className="text-xs text-center p-2 bg-green-50 rounded border border-green-200 text-green-700">
-                    ✓ Generated automatically when you save
-                  </div>
+                  <Button
+                    onClick={handlePipelineExportWithSkins}
+                    variant="outline"
+                    className="w-full border-green-500 text-green-600 hover:bg-green-50"
+                    data-testid="button-pipeline-export-with-skins"
+                  >
+                    🎨 Generate Pipeline Image With Skins
+                  </Button>
                 </div>
               </div>
             </div>

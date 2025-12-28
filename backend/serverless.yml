@@ -1,18 +1,12 @@
 service: florify-simple
 
 plugins:
-  - serverless-python-requirements
+  - serverless-api-gateway-integration-timeout
 
 custom:
-  pythonRequirements:
-    dockerizePip: false
-    slim: true
-    strip: false
-    layer: false
-    zip: true
-    useStaticCache: true
-    useDownloadCache: true
-    cacheLocation: ".requirements-cache"
+  # API Gateway integration timeout (in milliseconds)
+  # Note: REST API maximum is 30 seconds (30000ms)
+  apiGatewayIntegrationTimeout: 30000
 
 provider:
   name: aws
@@ -52,18 +46,16 @@ provider:
             - arn:aws:s3:::florify-blueprint-images-${self:provider.stage}/*
 
 package:
-  individually: true
   patterns:
     - '!node_modules/**'
     - '!.git/**'
     - '!.venv/**'
     - '!__pycache__/**'
     - '!*.pyc'
-    - '!blueprint_embeddings_db/**'
     - '!Dockerfile*'
     - '!build-yolo-container.bat'
-    - '!lambda-layers/**'
-    - '!.serverless/**'
+    - '!blueprint_embeddings_db/**'
+    - 'blueprint_embeddings_db/png_cache/**'
 
 functions:
   # Authentication
