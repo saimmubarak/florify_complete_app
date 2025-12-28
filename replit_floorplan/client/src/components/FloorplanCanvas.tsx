@@ -16,6 +16,7 @@ import {
   type Patio,
   type PatioWidth,
   type PatioSurface,
+  type PlantSymbol,
   DEFAULT_EDITING_DPI,
   A2_WIDTH_FT,
   A2_HEIGHT_FT,
@@ -57,6 +58,7 @@ interface FloorplanCanvasProps {
   driveways: Driveway[];
   pathways: Pathway[];
   patios: Patio[];
+  plantSymbols: PlantSymbol[];
   viewTransform: ViewTransform;
   selectedShapeId: string | null;
   selectedDoorId: string | null;
@@ -91,6 +93,7 @@ export function FloorplanCanvas({
   driveways,
   pathways,
   patios,
+  plantSymbols,
   viewTransform,
   selectedShapeId,
   selectedDoorId,
@@ -284,6 +287,60 @@ export function FloorplanCanvas({
         ctx.setLineDash([4, 4]);
         ctx.strokeRect(pos.x - (door.width * viewTransform.zoom) / 2 - 5, pos.y - 10, door.width * viewTransform.zoom + 10, 20);
         ctx.setLineDash([]);
+        ctx.restore();
+      }
+    });
+
+    // Draw plant symbols (Step 8: planted-garden)
+    // YOLO pipeline: 512px × 512px at 10.03px/ft scale
+    // Replit floorplan: 170.5px × 300.89px at ~3.344px/ft scale
+    // Scale down factor: 3.0 (10.03 / 3.344)
+    plantSymbols.forEach(plant => {
+      // Convert YOLO coordinates (512×512 px at 10.03px/ft) to replit world coordinates (feet)
+      // YOLO window is bottom 51ft × 51ft of house
+      // In replit, the house is positioned in feet, not pixels
+
+      // Convert YOLO pixel coordinates to feet (divide by 10.03 px/ft)
+      const plantXFeet = plant.x / 10.03;
+      const plantYFeet = plant.y / 10.03;
+
+      // Find the house shape to get its position
+      const houseShape = shapes.find(s => s.layer === 'house');
+      if (houseShape && houseShape.vertices.length > 0) {
+        // Get bottom-left corner of house (min x, max y)
+        const houseMinX = Math.min(...houseShape.vertices.map(v => v.x));
+        const houseMaxY = Math.max(...houseShape.vertices.map(v => v.y));
+
+        // YOLO origin (0,0) maps to house bottom-left corner
+        // Add plant offset from YOLO origin
+        const worldX = houseMinX + plantXFeet;
+        const worldY = houseMaxY - plantYFeet; // Y is inverted (YOLO Y increases downward)
+
+        // Scale down diameter by 3x for replit display
+        const displayDiameter = (plant.diameter / 3) / 10.03; // Convert px to feet, then scale down
+
+        // Convert world coordinates to canvas pixels
+        const canvasPos = worldToCanvas({ x: worldX, y: worldY }, viewTransform, DEFAULT_EDITING_DPI, canvasSize.width, canvasSize.height);
+        const radiusPx = (displayDiameter / 2) * pixelsPerFoot(viewTransform.zoom, DEFAULT_EDITING_DPI);
+
+        // Draw plant symbol as a circle with color based on category
+        ctx.save();
+        let plantColor = '#4ade80'; // Green default
+        if (plant.plantCategory === 'Tree') plantColor = '#22c55e';
+        else if (plant.plantCategory === 'Shrub') plantColor = '#fb923c';
+        else if (plant.plantCategory === 'Perennial') plantColor = '#a855f7';
+
+        ctx.fillStyle = plantColor;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(canvasPos.x, canvasPos.y, radiusPx, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Draw outline
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.9;
+        ctx.stroke();
         ctx.restore();
       }
     });

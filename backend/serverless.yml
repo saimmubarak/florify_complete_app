@@ -1,5 +1,19 @@
 service: florify-simple
 
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    slim: true
+    strip: false
+    layer: false
+    zip: true
+    useStaticCache: true
+    useDownloadCache: true
+    cacheLocation: ".requirements-cache"
+
 provider:
   name: aws
   runtime: python3.9
@@ -36,6 +50,20 @@ provider:
           Resource:
             - arn:aws:s3:::florify-blueprint-images-${self:provider.stage}
             - arn:aws:s3:::florify-blueprint-images-${self:provider.stage}/*
+
+package:
+  individually: true
+  patterns:
+    - '!node_modules/**'
+    - '!.git/**'
+    - '!.venv/**'
+    - '!__pycache__/**'
+    - '!*.pyc'
+    - '!blueprint_embeddings_db/**'
+    - '!Dockerfile*'
+    - '!build-yolo-container.bat'
+    - '!lambda-layers/**'
+    - '!.serverless/**'
 
 functions:
   # Authentication

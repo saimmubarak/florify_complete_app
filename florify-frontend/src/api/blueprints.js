@@ -7,7 +7,7 @@ const API_BASE_URL = "https://jiazehdrvf.execute-api.eu-north-1.amazonaws.com/de
 // Create axios instance with better error handling
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 30 second timeout for large image uploads
+  timeout: 150000, // 150 second timeout for YOLO detection (Lambda can take up to 120s)
   headers: {
     'Content-Type': 'application/json',
   }
@@ -114,19 +114,20 @@ export const updateBlueprint = async (blueprintId, blueprintData) => {
 
 /**
  * Get blueprint image URLs from a blueprint object
- * Returns both the with-skins and without-skins versions
- * 
+ * Returns the with-skins, without-skins, and 512×512 pipeline with skins versions
+ *
  * @param {Object} blueprint - The blueprint object from API
- * @returns {Object} Object with pngWithSkins and pngWithoutSkins URLs
+ * @returns {Object} Object with pngWithSkins, pngWithoutSkins, and pipelinePngWithSkins URLs
  */
 export const getBlueprintImageUrls = (blueprint) => {
   if (!blueprint) {
-    return { pngWithSkins: null, pngWithoutSkins: null };
+    return { pngWithSkins: null, pngWithoutSkins: null, pipelinePngWithSkins: null };
   }
 
   return {
     pngWithSkins: blueprint.pngWithSkinsUrl || null,
     pngWithoutSkins: blueprint.pngWithoutSkinsUrl || null,
+    pipelinePngWithSkins: blueprint.pipelinePngWithSkinsUrl || null,
   };
 };
 

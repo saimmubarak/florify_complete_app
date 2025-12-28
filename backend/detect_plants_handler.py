@@ -27,7 +27,7 @@ try:
     HAS_YOLO = True
     print("✅ YOLO dependencies loaded successfully")
     print(f"   - ultralytics: {YOLO.__module__}")
-    print(f"   - PIL: {Image.__module__}")
+    print(f"   - PIL: PIL.Image module loaded")
     print(f"   - numpy: {np.__version__}")
     print(f"   - torch: {torch.__version__}")
 except ImportError as e:

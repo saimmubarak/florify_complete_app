@@ -7,6 +7,7 @@ import { WallsPanel } from "@/components/WallsPanel";
 import { AddDrivewaysPanel } from "@/components/AddDrivewaysPanel";
 import { AddPathwaysPanel } from "@/components/AddPathwaysPanel";
 import { PatioPanel } from "@/components/PatioPanel";
+import { PlantedGardenPanel } from "@/components/PlantedGardenPanel";
 import { FloorplanCanvas } from "@/components/FloorplanCanvas";
 import { PropertiesPanel } from "@/components/PropertiesPanel";
 import { Toolbar } from "@/components/Toolbar";
@@ -31,6 +32,7 @@ import {
   type Patio,
   type PatioWidth,
   type PatioSurface,
+  type PlantSymbol,
   A2_WIDTH_FT,
   A2_HEIGHT_FT,
 } from "@shared/schema";
@@ -63,13 +65,18 @@ export default function Floorplan() {
   }
   
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState<WizardStep>(autoStep === 'export' ? 'export-save' : 'plot-size');
+  const [currentStep, setCurrentStep] = useState<WizardStep>(
+    autoStep === 'export' ? 'export-save' :
+    autoStep === 'planted-garden' ? 'planted-garden' :
+    'plot-size'
+  );
   const [completedSteps, setCompletedSteps] = useState<WizardStep[]>([]);
   const [shapes, setShapes] = useState<FloorplanShape[]>([]);
   const [doors, setDoors] = useState<Door[]>([]);
   const [driveways, setDriveways] = useState<Driveway[]>([]);
   const [pathways, setPathways] = useState<Pathway[]>([]);
   const [patios, setPatios] = useState<Patio[]>([]);
+  const [plantSymbols, setPlantSymbols] = useState<PlantSymbol[]>([]);
   const [viewTransform, setViewTransform] = useState<ViewTransform>(initialViewTransform);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [selectedDoorId, setSelectedDoorId] = useState<string | null>(null);
@@ -133,8 +140,13 @@ export default function Floorplan() {
                 setDriveways(blueprintData.driveways || []);
                 setPathways(blueprintData.pathways || []);
                 setPatios(blueprintData.patios || []);
+                setPlantSymbols(blueprintData.plantSymbols || []);
                 setViewTransform(blueprintData.viewTransform || initialViewTransform);
-                setCurrentStep(autoStep === 'export' ? 'export-save' : blueprintData.currentStep || 'plot-size');
+                setCurrentStep(
+                  autoStep === 'export' ? 'export-save' :
+                  autoStep === 'planted-garden' ? 'planted-garden' :
+                  blueprintData.currentStep || 'plot-size'
+                );
                 console.log('✅ Blueprint loaded successfully');
               } else {
                 console.warn('⚠️ blueprintData is empty');
@@ -179,7 +191,7 @@ export default function Floorplan() {
     initProject();
   }, []);
 
-  // Auto-save when shapes, doors, driveways, pathways, patios, or view transform changes
+  // Auto-save when shapes, doors, driveways, pathways, patios, plantSymbols, or view transform changes
   useEffect(() => {
     if (projectId) {
       const timeoutId = setTimeout(() => {
@@ -192,6 +204,7 @@ export default function Floorplan() {
             driveways,
             pathways,
             patios,
+            plantSymbols,
             viewTransform,
           },
         });
@@ -199,11 +212,11 @@ export default function Floorplan() {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [shapes, doors, driveways, pathways, patios, viewTransform, currentStep, projectId]);
+  }, [shapes, doors, driveways, pathways, patios, plantSymbols, viewTransform, currentStep, projectId]);
 
   // Wizard Navigation
   const handleNext = useCallback(() => {
-    const stepOrder: WizardStep[] = ['plot-size', 'house-shape', 'add-doors', 'walls', 'add-driveways', 'add-pathways', 'add-patios', 'export-save'];
+    const stepOrder: WizardStep[] = ['plot-size', 'house-shape', 'add-doors', 'walls', 'add-driveways', 'add-pathways', 'add-patios', 'export-save', 'planted-garden'];
     const currentIndex = stepOrder.indexOf(currentStep);
 
     // Validate current step
@@ -225,7 +238,7 @@ export default function Floorplan() {
   }, [currentStep, completedSteps, shapes.length, toast]);
 
   const handlePrevious = useCallback(() => {
-    const stepOrder: WizardStep[] = ['plot-size', 'house-shape', 'add-doors', 'walls', 'add-driveways', 'add-pathways', 'add-patios', 'export-save'];
+    const stepOrder: WizardStep[] = ['plot-size', 'house-shape', 'add-doors', 'walls', 'add-driveways', 'add-pathways', 'add-patios', 'export-save', 'planted-garden'];
     const currentIndex = stepOrder.indexOf(currentStep);
 
     if (currentIndex > 0) {
@@ -529,7 +542,7 @@ export default function Floorplan() {
     }
   }, [shapes, doors, driveways, pathways, toast]);
 
-  // Pipeline Export - Generate 512x512 PNG for AI plant placement
+  // Pipeline Export - Generate 512x512 PNG for AI plant placement (without skins)
   const handlePipelineExport = useCallback(async () => {
     try {
       toast({
@@ -594,10 +607,14 @@ export default function Floorplan() {
       console.log('With skins size:', pngWithSkins.length, 'bytes');
       console.log('Without skins size:', pngWithoutSkins.length, 'bytes');
 
+      // Note: Pipeline PNG with skins is now generated on the backend from the full-size PNG
+      // This ensures correct processing and consistent output
+
       // If in create mode, send to Florify API directly
       if (mode === 'create' && gardenId) {
         console.log('📤 Saving blueprint to Florify...');
-        
+        console.log('Backend will generate 512×512 pipeline PNG from full-size PNG with skins');
+
         const token = localStorage.getItem('token');
         const response = await fetch(`https://jiazehdrvf.execute-api.eu-north-1.amazonaws.com/dev/blueprints`, {
           method: 'POST',
@@ -882,6 +899,12 @@ export default function Floorplan() {
               isDrawingMode={patioDrawingMode.active}
             />
           )}
+          {currentStep === 'planted-garden' && (
+            <PlantedGardenPanel
+              plantCount={plantSymbols.length}
+              onGoBack={() => setCurrentStep('export-save')}
+            />
+          )}
           {currentStep === 'export-save' && (
             <div className="p-4">
               <h3 className="text-base font-semibold mb-4">Export & Save</h3>
@@ -914,22 +937,38 @@ export default function Floorplan() {
                   🌱 AI Plant Placement Pipeline
                 </h4>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Generate a processed 512×512 image for the AI model to suggest plant placements.
+                  Generate processed 512×512 images for the AI plant placement pipeline.
                 </p>
-                <div className="text-xs text-muted-foreground mb-3 p-2 bg-muted/30 rounded">
-                  <p className="font-mono">• 3× uniform scaling</p>
-                  <p className="font-mono">• Bottom 50% crop</p>
-                  <p className="font-mono">• 512×512 px output</p>
-                  <p className="font-mono">• Structure only (no skins)</p>
+
+                {/* Without Skins - For AI Embedding */}
+                <div className="mb-4">
+                  <p className="text-xs font-medium mb-2">Structure Only (No Skins)</p>
+                  <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted/30 rounded">
+                    <p className="font-mono">• For AI embeddings</p>
+                    <p className="font-mono">• 512×512 px output</p>
+                  </div>
+                  <Button
+                    onClick={handlePipelineExport}
+                    variant="outline"
+                    className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
+                    data-testid="button-pipeline-export"
+                  >
+                    🧠 Generate Pipeline Image
+                  </Button>
                 </div>
-                <Button
-                  onClick={handlePipelineExport}
-                  variant="outline"
-                  className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
-                  data-testid="button-pipeline-export"
-                >
-                  🧠 Generate Pipeline Image
-                </Button>
+
+                {/* With Skins - Generated automatically on backend */}
+                <div>
+                  <p className="text-xs font-medium mb-2">With Visual Skins</p>
+                  <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted/30 rounded">
+                    <p className="font-mono">• Auto-generated on backend</p>
+                    <p className="font-mono">• 512×512 px with textures</p>
+                    <p className="font-mono">• Created when saving blueprint</p>
+                  </div>
+                  <div className="text-xs text-center p-2 bg-green-50 rounded border border-green-200 text-green-700">
+                    ✓ Generated automatically when you save
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -944,6 +983,7 @@ export default function Floorplan() {
               driveways={driveways}
               pathways={pathways}
               patios={patios}
+              plantSymbols={plantSymbols}
               viewTransform={viewTransform}
               selectedShapeId={selectedShapeId}
               selectedDoorId={selectedDoorId}

@@ -1,0 +1,10 @@
+
+Initializing
+Initializing
+Resolving variables
+Authenticating
+Finalizing
+
+✖ Unable to reach the Serverless API (fetch failed; getaddrinfo EAI_AGAIN core.serverless.com; code: EAI_AGAIN).
+Please verify your network connection and try again.
+

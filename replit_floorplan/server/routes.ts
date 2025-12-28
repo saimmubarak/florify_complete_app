@@ -104,6 +104,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get project data for generating pipeline image with skins
+  app.get("/api/projects/:id/pipeline-data", async (req, res) => {
+    try {
+      const project = await storage.getProject(req.params.id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      // Return only the data needed for pipeline image generation
+      res.json({
+        shapes: project.shapes || [],
+        doors: project.doors || [],
+        driveways: project.driveways || [],
+        pathways: project.pathways || [],
+        patios: project.patios || []
+      });
+    } catch (error) {
+      console.error("Error getting project pipeline data:", error);
+      res.status(500).json({ error: "Failed to get project data" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
