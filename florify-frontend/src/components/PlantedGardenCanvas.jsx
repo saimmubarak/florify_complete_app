@@ -16,7 +16,8 @@ const PlantedGardenCanvas = ({
   detections,
   blueprint,
   floorplanImage,
-  onPlantsUpdate
+  onPlantsUpdate,
+  houseShape
 }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -30,8 +31,81 @@ const PlantedGardenCanvas = ({
   // Canvas is fixed at 512×512px (same as YOLO input)
   const CANVAS_SIZE = 512;
   
-  // Offset adjustments for plant symbol positions
-  const PLANT_X_OFFSET = 24; // Move symbols slightly to the right
+  // House shape from the garden (rectangular, l-shaped, mirror-l, u-shaped, custom, or null)
+  // This is extracted from the blueprint data and saved to the garden when blueprint is created/updated
+  useEffect(() => {
+    console.log('🏠 PlantedGardenCanvas received houseShape prop:', houseShape);
+    console.log('🏠 houseShape type:', typeof houseShape);
+    console.log('🏠 houseShape value:', houseShape);
+    if (houseShape) {
+      console.log('✅ House shape is truthy:', houseShape);
+    } else {
+      console.warn('⚠️ House shape is falsy/undefined/null');
+    }
+  }, [houseShape]);
+  
+  // Calculate dynamic X offset based on house shape and plant bounds
+  // Extract leftmost and rightmost X values (matching the pattern of originalLowestY)
+  const originalLeftmostX = useMemo(() => {
+    if (!plants || plants.length === 0) return null;
+    let leftmost = plants[0].x; // Greatest x value
+    for (let i = 1; i < plants.length; i++) {
+      if (plants[i].x > leftmost) {
+        leftmost = plants[i].x;
+      }
+    }
+    return leftmost;
+  }, [plants]);
+  
+  const originalRightmostX = useMemo(() => {
+    if (!plants || plants.length === 0) return null;
+    let rightmost = plants[0].x; // Smallest x value
+    for (let i = 1; i < plants.length; i++) {
+      if (plants[i].x < rightmost) {
+        rightmost = plants[i].x;
+      }
+    }
+    return rightmost;
+  }, [plants]);
+  
+  // Calculate PLANT_X_OFFSET based on house shape
+  // Similar structure to PLANT_Y_OFFSET for consistency
+  const PLANT_X_OFFSET = useMemo(() => {
+    // Condition 1: If no plants, return default offset
+    if (!plants || plants.length === 0) return 39;
+    
+    // Condition 2: If bounds not ready, return default offset
+    if (originalLeftmostX === null || originalRightmostX === null) {
+      return 39;
+    }
+    
+    // Condition 3: If no houseShape provided (null/undefined), use default offset
+    if (!houseShape) {
+      return 39;
+    }
+    
+    // Condition 4: Calculate offset based on house shape
+    // Note: originalLeftmostX = greatest x value (rightmost symbol position)
+    //       originalRightmostX = smallest x value (leftmost symbol position)
+    const MARGIN = 25; // Distance from canvas edge (12px margin)
+    
+    if (houseShape === 'mirror-l') {
+      // Position the rightmost symbol (originalLeftmostX) at pixel (CANVAS_SIZE - MARGIN) = 500
+      // Formula: originalLeftmostX + offset = (CANVAS_SIZE - MARGIN)
+      // Therefore: offset = (CANVAS_SIZE - MARGIN) - originalLeftmostX
+      const offset = (CANVAS_SIZE - MARGIN) - originalLeftmostX;
+      return offset;
+    } else if (houseShape === 'l-shaped') {
+      // Position the leftmost symbol (originalRightmostX) at pixel MARGIN = 12
+      // Formula: originalRightmostX + offset = MARGIN
+      // Therefore: offset = MARGIN - originalRightmostX
+      const offset = MARGIN - originalRightmostX;
+      return offset;
+    } else {
+      // Default offset for other shapes (rectangular, u-shaped, custom, etc.)
+      return 30;
+    }
+  }, [houseShape, originalLeftmostX, originalRightmostX, plants]);
   
   // Calculate optimal PLANT_Y_OFFSET based on lowestY
   // First, find the lowest plant's y-coordinate without any offset
@@ -134,7 +208,7 @@ const PlantedGardenCanvas = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [draggedPlant, dragOffset, plants, onPlantsUpdate]);
+  }, [draggedPlant, dragOffset, plants, onPlantsUpdate, PLANT_X_OFFSET, PLANT_Y_OFFSET]);
 
   // Get plant color based on category
   const getPlantColor = (category) => {
@@ -259,9 +333,23 @@ const PlantedGardenCanvas = ({
             />
           )}
           {/* Plant symbols - positioned at original YOLO coordinates */}
-          {plants.map(plant => {
+          {plants.map((plant, index) => {
             const diameter = plant.diameter; // Use original diameter (no scaling)
             const radius = diameter / 2;
+            const visualX = plant.x + PLANT_X_OFFSET;
+            const visualY = plant.y + PLANT_Y_OFFSET;
+            
+            // Debug logging for first plant only
+            if (index === 0) {
+              console.log('📍 First plant position:', {
+                originalX: plant.x,
+                originalY: plant.y,
+                PLANT_X_OFFSET,
+                PLANT_Y_OFFSET,
+                visualX,
+                visualY
+              });
+            }
 
             return (
               <div
@@ -269,8 +357,8 @@ const PlantedGardenCanvas = ({
                 className={`plant-symbol ${draggedPlant?.id === plant.id ? 'dragging' : ''}`}
                 style={{
                   position: 'absolute',
-                  left: `${plant.x + PLANT_X_OFFSET - radius}px`,
-                  top: `${plant.y + PLANT_Y_OFFSET - radius}px`,
+                  left: `${visualX - radius}px`,
+                  top: `${visualY - radius}px`,
                   width: `${diameter}px`,
                   height: `${diameter}px`,
                   borderRadius: '50%',

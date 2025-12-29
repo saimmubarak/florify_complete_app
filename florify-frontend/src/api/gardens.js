@@ -102,3 +102,15 @@ export const deleteGarden = async (gardenId) => {
     throw error;
   }
 };
+
+// Update house shape for a garden (separate endpoint to avoid affecting other backend processes)
+export const updateGardenHouseShape = async (gardenId, houseShape) => {
+  try {
+    const response = await api.patch(`/gardens/${gardenId}/house-shape`, {
+      houseShape: houseShape
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
