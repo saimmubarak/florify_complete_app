@@ -45,6 +45,8 @@ const GardenDetailPage = () => {
     try {
       setLoading(true);
       const response = await getGarden(gardenId);
+      console.log('🏠 Garden loaded:', response.garden);
+      console.log('🏠 Garden houseShape:', response.garden?.houseShape);
       setGarden(response.garden);
       setEditData({
         name: response.garden.name,
@@ -76,6 +78,39 @@ const GardenDetailPage = () => {
       setBlueprintImages({ pngWithSkins: null, pngWithoutSkins: null, pipelinePngWithSkins: null });
     }
   };
+  
+  // Extract houseShape from blueprint if garden doesn't have it (for existing gardens)
+  useEffect(() => {
+    const extractHouseShapeFromBlueprint = async () => {
+      // Only run if garden is loaded and doesn't have houseShape, and blueprint exists
+      if (garden && !garden.houseShape && blueprint && blueprint.blueprintData) {
+        try {
+          const { extractHouseShape } = await import('../utils/extractHouseShape');
+          const { updateGardenHouseShape } = await import('../api/gardens');
+          // Parse blueprintData if it's a string
+          const blueprintData = typeof blueprint.blueprintData === 'string' 
+            ? JSON.parse(blueprint.blueprintData) 
+            : blueprint.blueprintData;
+          const extractedHouseShape = extractHouseShape(blueprintData);
+          
+          if (extractedHouseShape) {
+            console.log('🔄 Extracting houseShape from existing blueprint:', extractedHouseShape);
+            await updateGardenHouseShape(gardenId, extractedHouseShape);
+            // Reload garden to update state with new houseShape
+            const gardenResponse = await getGarden(gardenId);
+            console.log('🏠 Garden reloaded with houseShape:', gardenResponse.garden?.houseShape);
+            setGarden(gardenResponse.garden);
+          }
+        } catch (extractError) {
+          console.warn('Failed to extract houseShape from existing blueprint:', extractError);
+          // Non-critical, continue without houseShape
+        }
+      }
+    };
+    
+    extractHouseShapeFromBlueprint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [garden?.houseShape, blueprint?.blueprintData, gardenId]);
 
   const handleViewBlueprint = (autoStep = null) => {
     if (!blueprint) return;
@@ -145,6 +180,23 @@ const GardenDetailPage = () => {
             blueprintData: event.data.blueprintData,
             name: `${garden.name} Blueprint`
           });
+
+          // Extract and save house shape to garden
+          const { extractHouseShape } = await import('../utils/extractHouseShape');
+          const { updateGardenHouseShape } = await import('../api/gardens');
+          const houseShape = extractHouseShape(event.data.blueprintData);
+          
+          if (houseShape) {
+            try {
+              await updateGardenHouseShape(gardenId, houseShape);
+              console.log('✅ House shape saved:', houseShape);
+              // Reload garden to get updated houseShape
+              await loadGarden();
+            } catch (shapeError) {
+              console.warn('Failed to save house shape (non-critical):', shapeError);
+              // Don't fail the whole operation if house shape save fails
+            }
+          }
 
           // Reload blueprint data
           window.removeEventListener('message', handleMessage);
@@ -861,6 +913,7 @@ const GardenDetailPage = () => {
                             console.log('Plants updated:', updatedPlants);
                             // Store updated plant positions for Step 4
                           }}
+                          houseShape={garden?.houseShape || null}
                         />
                       )}
 
@@ -926,8 +979,13 @@ const GardenDetailPage = () => {
  * The image is positioned so its top-left corner (after 3x scaling) is at (-712, -1382.4)
  * Only the portion from (0,0) to (512,512) is visible
  */
-const Step3PlantPlacement = ({ detections, blueprint, pngWithSkins, pngWithoutSkins, onPlantsUpdate }) => {
+const Step3PlantPlacement = ({ detections, blueprint, pngWithSkins, pngWithoutSkins, onPlantsUpdate, houseShape }) => {
   const [backgroundImage, setBackgroundImage] = useState(null);
+  
+  // Debug: Log houseShape prop
+  useEffect(() => {
+    console.log('🏠 Step3PlantPlacement received houseShape:', houseShape);
+  }, [houseShape]);
 
   useEffect(() => {
     console.log('Step3 background image selection:', { pngWithSkins, pngWithoutSkins });
@@ -971,6 +1029,7 @@ const Step3PlantPlacement = ({ detections, blueprint, pngWithSkins, pngWithoutSk
         blueprint={blueprint}
         floorplanImage={backgroundImage}
         onPlantsUpdate={onPlantsUpdate}
+        houseShape={houseShape}
       />
     </div>
   );

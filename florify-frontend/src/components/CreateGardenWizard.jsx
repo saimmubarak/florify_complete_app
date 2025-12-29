@@ -307,6 +307,21 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
             name: `${formData.name} Blueprint`
           });
 
+          // Extract and save house shape to garden
+          const { extractHouseShape } = await import('../utils/extractHouseShape');
+          const { updateGardenHouseShape } = await import('../api/gardens');
+          const houseShape = extractHouseShape(event.data.blueprintData);
+          
+          if (houseShape) {
+            try {
+              await updateGardenHouseShape(createdGardenId, houseShape);
+              console.log('✅ House shape saved:', houseShape);
+            } catch (shapeError) {
+              console.warn('Failed to save house shape (non-critical):', shapeError);
+              // Don't fail the whole operation if house shape save fails
+            }
+          }
+
           // Close wizard and refresh
           window.removeEventListener('message', handleMessage);
           onGardenCreated({ gardenId: createdGardenId, ...formData });
