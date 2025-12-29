@@ -29,6 +29,10 @@ const PlantedGardenCanvas = ({
 
   // Canvas is fixed at 512×512px (same as YOLO input)
   const CANVAS_SIZE = 512;
+  
+  // Offset adjustments for plant symbol positions
+  const PLANT_X_OFFSET = 32; // Move symbols slightly to the right
+  const PLANT_Y_OFFSET = 14; // Move symbols slightly down
 
   // Parse detections on mount or when detections change
   useEffect(() => {
@@ -130,7 +134,7 @@ const PlantedGardenCanvas = ({
           backgroundColor: '#fff'
         }}
       >
-        {/* Canvas viewport - fixed 512×512px */}
+        {/* Canvas viewport - fixed 512×512px with scaled and positioned background */}
         <div
           ref={canvasRef}
           className="canvas-viewport-fixed"
@@ -138,13 +142,43 @@ const PlantedGardenCanvas = ({
             width: `${CANVAS_SIZE}px`,
             height: `${CANVAS_SIZE}px`,
             position: 'relative',
-            backgroundImage: floorplanImage ? `url(${floorplanImage})` : 'none',
-            backgroundSize: `${CANVAS_SIZE}px ${CANVAS_SIZE}px`,
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
+            overflow: 'hidden',
             backgroundColor: floorplanImage ? 'transparent' : '#f9f9f9'
           }}
         >
+          {/* Background image centered in canvas - scaled 0.80x */}
+          {floorplanImage && (
+            <img
+              src={floorplanImage}
+              alt="Floorplan background"
+              style={{
+                position: 'absolute',
+                top: '8%',
+                left: '50%',
+                transform: 'translate(-50%, -50%) scale(0.80)',
+                width: 'auto',
+                height: 'auto',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                display: 'block',
+                zIndex: 0
+              }}
+              onLoad={(e) => {
+                const img = e.target;
+                console.log('✅ Floorplan background image loaded successfully');
+                console.log('Image URL:', floorplanImage);
+                console.log('Image dimensions:', {
+                  naturalWidth: img.naturalWidth,
+                  naturalHeight: img.naturalHeight,
+                  offsetWidth: img.offsetWidth,
+                  offsetHeight: img.offsetHeight
+                });
+              }}
+              onError={(e) => {
+                console.error('❌ Failed to load floorplan background image:', floorplanImage, e);
+              }}
+            />
+          )}
           {/* Plant symbols - positioned at original YOLO coordinates */}
           {plants.map(plant => {
             const diameter = plant.diameter; // Use original diameter (no scaling)
@@ -156,8 +190,8 @@ const PlantedGardenCanvas = ({
                 className={`plant-symbol ${draggedPlant?.id === plant.id ? 'dragging' : ''}`}
                 style={{
                   position: 'absolute',
-                  left: `${plant.x - radius}px`,
-                  top: `${plant.y - radius}px`,
+                  left: `${plant.x + PLANT_X_OFFSET - radius}px`,
+                  top: `${plant.y + PLANT_Y_OFFSET - radius}px`,
                   width: `${diameter}px`,
                   height: `${diameter}px`,
                   borderRadius: '50%',
@@ -198,8 +232,8 @@ const PlantedGardenCanvas = ({
               className="plant-popup"
               style={{
                 position: 'absolute',
-                left: `${hoveredPlant.x + hoveredPlant.diameter / 2 + 10}px`,
-                top: `${hoveredPlant.y}px`,
+                left: `${hoveredPlant.x + PLANT_X_OFFSET + hoveredPlant.diameter / 2 + 10}px`,
+                top: `${hoveredPlant.y + PLANT_Y_OFFSET}px`,
                 backgroundColor: '#fff',
                 border: '2px solid #2D6A4F',
                 borderRadius: '8px',

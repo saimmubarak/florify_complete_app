@@ -13,7 +13,7 @@ const GardenDetailPage = () => {
   const navigate = useNavigate();
   const [garden, setGarden] = useState(null);
   const [blueprint, setBlueprint] = useState(null);
-  const [blueprintImages, setBlueprintImages] = useState({ pngWithSkins: null, pngWithoutSkins: null });
+  const [blueprintImages, setBlueprintImages] = useState({ pngWithSkins: null, pngWithoutSkins: null, pipelinePngWithSkins: null });
   const [showSkinsVersion, setShowSkinsVersion] = useState(true); // Toggle between with/without skins
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -73,7 +73,7 @@ const GardenDetailPage = () => {
     } catch (err) {
       console.log('No blueprint found for this garden:', err.message);
       setBlueprint(null);
-      setBlueprintImages({ pngWithSkins: null, pngWithoutSkins: null });
+      setBlueprintImages({ pngWithSkins: null, pngWithoutSkins: null, pipelinePngWithSkins: null });
     }
   };
 
@@ -872,31 +872,16 @@ const GardenDetailPage = () => {
 
                       {/* Step 3: Interactive Plant Placement Canvas */}
                       {pipelineState.detections && pipelineState.detections.length > 0 && (
-                        <div style={{ marginTop: '20px', marginBottom: '20px' }}>
-                          <div style={{
-                            backgroundColor: '#f0f9ff',
-                            padding: '10px 15px',
-                            borderRadius: '8px',
-                            marginBottom: '15px'
-                          }}>
-                            <p style={{ color: '#0369a1', fontWeight: 'bold', marginBottom: '5px' }}>
-                              ✅ Step 3: Interactive Plant Placement
-                            </p>
-                            <p style={{ color: '#666', fontSize: '0.85em' }}>
-                              View and adjust plant positions on your garden blueprint. Drag plants to reposition them.
-                            </p>
-                          </div>
-
-                          <PlantedGardenCanvas
-                            detections={pipelineState.detections}
-                            blueprint={blueprint}
-                            floorplanImage={blueprintImages.pipelinePngWithSkins}
-                            onPlantsUpdate={(updatedPlants) => {
-                              console.log('Plants updated:', updatedPlants);
-                              // Store updated plant positions for Step 4
-                            }}
-                          />
-                        </div>
+                        <Step3PlantPlacement
+                          detections={pipelineState.detections}
+                          blueprint={blueprint}
+                          pngWithSkins={blueprintImages.pngWithSkins}
+                          pngWithoutSkins={blueprintImages.pngWithoutSkins}
+                          onPlantsUpdate={(updatedPlants) => {
+                            console.log('Plants updated:', updatedPlants);
+                            // Store updated plant positions for Step 4
+                          }}
+                        />
                       )}
 
                       {/* Action Buttons */}
@@ -951,6 +936,62 @@ const GardenDetailPage = () => {
           </Button>
         </div>
       </div>
+    </div>
+  );
+};
+
+/**
+ * Step 3 Plant Placement Component
+ * Uses the same pngWithSkins image as the display section, with 3x scaling and specific positioning
+ * The image is positioned so its top-left corner (after 3x scaling) is at (-712, -1382.4)
+ * Only the portion from (0,0) to (512,512) is visible
+ */
+const Step3PlantPlacement = ({ detections, blueprint, pngWithSkins, pngWithoutSkins, onPlantsUpdate }) => {
+  const [backgroundImage, setBackgroundImage] = useState(null);
+
+  useEffect(() => {
+    console.log('Step3 background image selection:', { pngWithSkins, pngWithoutSkins });
+    
+    // Use pngWithSkins (same image as display section uses) - this is the requirement
+    if (pngWithSkins) {
+      console.log('✅ Using pngWithSkins (same as display section) as background:', pngWithSkins);
+      setBackgroundImage(pngWithSkins);
+    }
+    // Fallback to without-skin image if with-skin is not available
+    else if (pngWithoutSkins) {
+      console.log('🔄 Falling back to pngWithoutSkins as background (without skins):', pngWithoutSkins);
+      setBackgroundImage(pngWithoutSkins);
+    }
+    // If none are available, set to null (will show default background)
+    else {
+      console.warn('⚠️ No background image URL available. pngWithSkins:', pngWithSkins, 'pngWithoutSkins:', pngWithoutSkins);
+      setBackgroundImage(null);
+    }
+  }, [pngWithSkins, pngWithoutSkins]);
+
+  return (
+    <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+      <div style={{
+        backgroundColor: '#f0f9ff',
+        padding: '10px 15px',
+        borderRadius: '8px',
+        marginBottom: '15px'
+      }}>
+        <p style={{ color: '#0369a1', fontWeight: 'bold', marginBottom: '5px' }}>
+          ✅ Step 3: Interactive Plant Placement
+        </p>
+        <p style={{ color: '#666', fontSize: '0.85em' }}>
+          View and adjust plant positions on your garden blueprint. Drag plants to reposition them.
+        </p>
+      </div>
+
+
+      <PlantedGardenCanvas
+        detections={detections}
+        blueprint={blueprint}
+        floorplanImage={backgroundImage}
+        onPlantsUpdate={onPlantsUpdate}
+      />
     </div>
   );
 };
