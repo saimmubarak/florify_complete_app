@@ -675,22 +675,6 @@ const GardenDetailPage = () => {
                     </div>
                   )}
                   
-                  {pipelineState.error && (
-                    <div style={{ 
-                      backgroundColor: '#fef2f2', 
-                      padding: '15px', 
-                      borderRadius: '8px',
-                      marginBottom: '15px'
-                    }}>
-                      <p style={{ color: '#dc2626', marginBottom: '10px' }}>
-                        ❌ {pipelineState.error}
-                      </p>
-                      <Button onClick={handleClearPipeline} variant="secondary">
-                        Try Again
-                      </Button>
-                    </div>
-                  )}
-                  
                   {pipelineState.matchedImage && (
                     <div>
                       {/* Step 1 Results */}
@@ -700,12 +684,8 @@ const GardenDetailPage = () => {
                         borderRadius: '8px',
                         marginBottom: '15px'
                       }}>
-                        <p style={{ color: '#16a34a', fontWeight: 'bold', marginBottom: '5px' }}>
-                          ✅ Step 1 Complete: Plant Template Found!
-                        </p>
-                        <p style={{ color: '#666', fontSize: '0.85em' }}>
-                          Similarity: {(pipelineState.matchInfo.similarity * 100).toFixed(1)}% • 
-                          Template: {pipelineState.matchInfo.filename}
+                        <p style={{ color: '#16a34a', fontWeight: 'bold' }}>
+                          ✅ Step 1 Complete: Garden floorplan with plant symbols produced!
                         </p>
                       </div>
                       
