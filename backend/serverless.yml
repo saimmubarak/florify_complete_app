@@ -132,6 +132,14 @@ functions:
           method: delete
           cors: true
 
+  update-garden-house-shape:
+    handler: update_garden_house_shape_handler.handler
+    events:
+      - http:
+          path: gardens/{gardenId}/house-shape
+          method: patch
+          cors: true
+
   # Blueprints
   create-blueprint:
     handler: create_blueprint_handler.handler
